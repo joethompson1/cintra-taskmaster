@@ -1,0 +1,33 @@
+services:
+  cintra-taskmaster:
+    build: .
+    container_name: cintra-taskmaster-mcp
+    ports:
+      - '3000:3000'
+    environment:
+      # Basic server configuration
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=info
+      
+      # Jira configuration (base URL from environment, credentials from headers)
+      - JIRA_API_URL=${JIRA_API_URL:-https://your-domain.atlassian.net}
+      
+      # Bitbucket configuration (workspace from environment, credentials from headers)
+      - BITBUCKET_WORKSPACE=${BITBUCKET_WORKSPACE:-your-workspace}
+      
+      # Optional: Configure logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+      
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s 
