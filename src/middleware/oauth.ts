@@ -126,17 +126,9 @@ export class AtlassianOAuthMiddleware {
             const resources = resourcesResponse.data;
             const cloudId = resources[0]?.id; // Use first available site
 
-            // Get user information from Atlassian
-            const userResponse = await axios.get('https://api.atlassian.com/me', {
-                headers: {
-                    'Authorization': `Bearer ${tokens.access_token}`,
-                    'Accept': 'application/json'
-                }
-            });
-
-            const userInfo = userResponse.data;
-            const email = userInfo.email;
-            const userId = userInfo.account_id || `user_${Date.now()}`;
+            // For OAuth, we only need the tokens and cloudId
+            // Email and other user info are not required for API calls
+            const userId = `oauth_user_${Date.now()}`;
 
             return {
                 sessionId: stateData.sessionId,
@@ -145,8 +137,7 @@ export class AtlassianOAuthMiddleware {
                     refreshToken: tokens.refresh_token,
                     expiresAt: Date.now() + (tokens.expires_in * 1000),
                     cloudId: cloudId,
-                    userId: userId,
-                    email: email
+                    userId: userId
                 }
             };
         } catch (error) {
@@ -283,10 +274,8 @@ export class AtlassianOAuthMiddleware {
             }
 
             // Add OAuth-derived credentials to request headers
-            req.headers['x-atlassian-email'] = tokenData.email || '';
             req.headers['x-oauth-token'] = tokenData.atlassianAccessToken;
             req.headers['x-cloud-id'] = tokenData.cloudId;
-            req.headers['x-jira-project'] = tokenData.jiraProject || process.env.JIRA_PROJECT;
             req.headers['oauth-authenticated'] = 'true';
 
             logger.info('✅ OAuth headers set successfully', {

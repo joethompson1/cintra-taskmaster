@@ -74,23 +74,16 @@ function extractCredentials(req: Request) {
 		
 		const credentials = {
 			JIRA_API_URL: cloudId ? `https://api.atlassian.com/ex/jira/${cloudId}` : process.env.JIRA_API_URL,
-			JIRA_EMAIL: req.headers['x-atlassian-email'] as string,
 			JIRA_API_TOKEN: oauthToken, // Use OAuth token as API token
-			JIRA_PROJECT: req.headers['x-jira-project'] as string || process.env.JIRA_PROJECT,
 			BITBUCKET_WORKSPACE: process.env.BITBUCKET_WORKSPACE,
-			BITBUCKET_EMAIL: req.headers['x-atlassian-email'] as string,
 			BITBUCKET_API_TOKEN: oauthToken, // Use same OAuth token for Bitbucket
 			IS_OAUTH: true, // Flag to indicate OAuth authentication
 		};
 		
 		logger.info('🔍 OAuth credentials extracted:', {
 			hasJiraApiUrl: !!credentials.JIRA_API_URL,
-			hasJiraEmail: !!credentials.JIRA_EMAIL,
 			hasJiraToken: !!credentials.JIRA_API_TOKEN,
-			hasJiraProject: !!credentials.JIRA_PROJECT,
 			jiraApiUrl: credentials.JIRA_API_URL,
-			jiraEmail: credentials.JIRA_EMAIL,
-			jiraProject: credentials.JIRA_PROJECT,
 			isOAuth: credentials.IS_OAUTH
 		});
 		
@@ -157,8 +150,9 @@ app.post('/mcp', oauthMiddleware.authenticateOAuth.bind(oauthMiddleware), async 
 					logger.info(`Session initialized and stored: ${sessionId}`);
 					logger.info(`Credentials configured for session: ${sessionId}`, {
 						hasJiraToken: !!credentials.JIRA_API_TOKEN,
-						jiraEmail: credentials.JIRA_EMAIL,
-						jiraProject: credentials.JIRA_PROJECT
+						jiraEmail: (credentials as any).JIRA_EMAIL || 'OAuth (not required)',
+						jiraProject: (credentials as any).JIRA_PROJECT || 'OAuth (not required)',
+						isOAuth: (credentials as any).IS_OAUTH || false
 					});
 				},
 			});

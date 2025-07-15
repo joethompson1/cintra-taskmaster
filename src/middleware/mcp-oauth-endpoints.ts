@@ -187,8 +187,6 @@ export function createMCPOAuthRouter(): Router {
                 atlassianRefreshToken: result.tokens.refreshToken,
                 cloudId: result.tokens.cloudId,
                 userId: result.tokens.userId,
-                email: result.tokens.email,
-                jiraProject: process.env.JIRA_PROJECT || 'DEFAULT',
                 sessionId: result.sessionId,
                 codeChallenge: flowState.mcpCodeChallenge,
                 codeChallengeMethod: flowState.mcpCodeChallengeMethod,
@@ -361,8 +359,6 @@ export function createMCPOAuthRouter(): Router {
                     atlassianAccessToken: codeData.atlassianAccessToken,
                     atlassianRefreshToken: codeData.atlassianRefreshToken,
                     cloudId: codeData.cloudId,
-                    email: codeData.email,
-                    jiraProject: codeData.jiraProject,
                     expiresAt: Date.now() + (3600 * 1000) // 1 hour
                 };
 

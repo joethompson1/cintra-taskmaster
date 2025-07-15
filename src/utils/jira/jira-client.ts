@@ -62,9 +62,9 @@ export class JiraClient {
         const isOAuth = (config as any)?.isOAuth || false;
         
         // Check if configuration has all required fields
-        // For OAuth, email is not required
+        // For OAuth, only baseUrl and apiToken are required
         if (isOAuth) {
-            this.enabled = !!(this.config.baseUrl && this.config.apiToken && this.config.project);
+            this.enabled = !!(this.config.baseUrl && this.config.apiToken);
         } else {
             this.enabled = !!(this.config.baseUrl && this.config.email && this.config.apiToken && this.config.project);
         }
