@@ -258,6 +258,47 @@ app.get('/health', (req: Request, res: Response) => {
 	});
 });
 
+// Root route handler for OAuth errors and basic info
+app.get('/', (req: Request, res: Response) => {
+	const { error, error_description } = req.query;
+	
+	if (error) {
+		// Display OAuth error information
+		res.status(400).json({
+			error: 'oauth_error',
+			error_type: error as string,
+			error_description: error_description as string || 'OAuth flow failed',
+			message: 'There was an error during the OAuth authentication process.',
+			next_steps: [
+				'Check your OAuth configuration in the MCP Inspector',
+				'Ensure your Atlassian OAuth app is properly configured',
+				'Verify your environment variables are set correctly'
+			],
+			support: {
+				health_check: '/health',
+				oauth_discovery: '/auth/.well-known/oauth-authorization-server'
+			}
+		});
+	} else {
+		// Display basic server information
+		res.json({
+			name: 'Cintra-Taskmaster MCP Server',
+			version: '1.0.0',
+			status: 'running',
+			endpoints: {
+				health: '/health',
+				mcp: '/mcp',
+				oauth_discovery: '/auth/.well-known/oauth-authorization-server'
+			},
+			authentication: {
+				methods: ['OAuth 2.0', 'Header-based'],
+				oauth_configured: oauthMiddleware.isConfigured()
+			},
+			message: 'This is an MCP server for Jira and Bitbucket task management.'
+		});
+	}
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
 	console.log(`MCP HTTP server listening on port ${PORT}`);

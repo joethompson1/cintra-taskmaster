@@ -10,14 +10,27 @@ This guide will help you dockerize and run the cintra-taskmaster MCP server usin
 
 ## Quick Start
 
-1. **Clone and Build**
+1. **Clone and Configure**
    ```bash
    git clone <your-repo>
    cd cintra-taskmaster
+   
+   # Create .env file with your OAuth configuration
+   # See the Environment Configuration section below for required variables
+   ```
+
+2. **Validate OAuth Configuration**
+   ```bash
+   # Run the OAuth validation script
+   node validate-oauth.js
+   ```
+
+3. **Build and Deploy**
+   ```bash
    docker-compose up --build
    ```
 
-2. **Access the Server**
+4. **Access the Server**
    - MCP Server: http://localhost:3000/mcp
    - Health Check: http://localhost:3000/health
 
@@ -34,11 +47,26 @@ JIRA_API_URL=https://your-domain.atlassian.net
 # Bitbucket Configuration  
 BITBUCKET_WORKSPACE=your-workspace
 
+# OAuth Configuration (required for MCP Inspector OAuth flow)
+BASE_URL=http://localhost:3000
+OAUTH_CALLBACK_URL=http://localhost:3000/auth/callback
+ATLASSIAN_CLIENT_ID=your-atlassian-oauth-client-id
+ATLASSIAN_CLIENT_SECRET=your-atlassian-oauth-client-secret
+MCP_CLIENT_ID=your-atlassian-oauth-client-id
+MCP_CLIENT_SECRET=your-atlassian-oauth-client-secret
+JWT_SECRET=your-jwt-secret-key
+
 # Logging (optional)
 LOG_LEVEL=info
 NODE_ENV=production
 PORT=3000
 ```
+
+**Important for Production Deployment:**
+- Replace `http://localhost:3000` with your actual deployment URL
+- Ensure `OAUTH_CALLBACK_URL` matches your Atlassian OAuth app configuration
+- Use a strong, random `JWT_SECRET` for production
+- Never commit your `.env` file to version control
 
 ### 2. User Authentication
 
@@ -86,6 +114,13 @@ docker run -d \
   -v $(pwd)/logs:/app/logs \
   -e JIRA_API_URL=https://your-domain.atlassian.net \
   -e BITBUCKET_WORKSPACE=your-workspace \
+  -e BASE_URL=http://localhost:3000 \
+  -e OAUTH_CALLBACK_URL=http://localhost:3000/auth/callback \
+  -e ATLASSIAN_CLIENT_ID=your-atlassian-oauth-client-id \
+  -e ATLASSIAN_CLIENT_SECRET=your-atlassian-oauth-client-secret \
+  -e MCP_CLIENT_ID=your-atlassian-oauth-client-id \
+  -e MCP_CLIENT_SECRET=your-atlassian-oauth-client-secret \
+  -e JWT_SECRET=your-jwt-secret-key \
   -e LOG_LEVEL=info \
   --name cintra-taskmaster \
   cintra-taskmaster:latest

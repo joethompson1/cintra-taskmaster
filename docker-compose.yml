@@ -16,6 +16,15 @@ services:
       # Bitbucket configuration (workspace from environment, credentials from headers)
       - BITBUCKET_WORKSPACE=${BITBUCKET_WORKSPACE:-your-workspace}
       
+      # OAuth Configuration (required for MCP Inspector)
+      - BASE_URL=${BASE_URL:-http://localhost:3000}
+      - OAUTH_CALLBACK_URL=${OAUTH_CALLBACK_URL:-${BASE_URL}/auth/callback}
+      - ATLASSIAN_CLIENT_ID=${ATLASSIAN_CLIENT_ID}
+      - ATLASSIAN_CLIENT_SECRET=${ATLASSIAN_CLIENT_SECRET}
+      - MCP_CLIENT_ID=${MCP_CLIENT_ID:-${ATLASSIAN_CLIENT_ID}}
+      - MCP_CLIENT_SECRET=${MCP_CLIENT_SECRET:-${ATLASSIAN_CLIENT_SECRET}}
+      - JWT_SECRET=${JWT_SECRET}
+      
       # Optional: Configure logging
       - LOG_LEVEL=${LOG_LEVEL:-info}
       
