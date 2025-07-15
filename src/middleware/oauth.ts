@@ -218,7 +218,7 @@ export class AtlassianOAuthMiddleware {
             
             // Return 401 with WWW-Authenticate header to trigger OAuth flow
             const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-            const discoveryUrl = `${baseUrl}/auth/.well-known/oauth-authorization-server`;
+            const discoveryUrl = `${baseUrl}/.well-known/oauth-authorization-server`;
             const authUrl = `${baseUrl}/auth/authorize`;
             
             logger.info('❌ No OAuth token provided, returning 401');

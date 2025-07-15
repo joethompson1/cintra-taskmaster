@@ -253,7 +253,7 @@ app.get('/health', (req: Request, res: Response) => {
 		sessions: Object.keys(transports).length,
 		oauth: {
 			configured: oauthMiddleware.isConfigured(),
-			discoveryUrl: '/auth/.well-known/oauth-authorization-server'
+			discoveryUrl: '/.well-known/oauth-authorization-server'
 		}
 	});
 });
@@ -276,7 +276,7 @@ app.get('/', (req: Request, res: Response) => {
 			],
 			support: {
 				health_check: '/health',
-				oauth_discovery: '/auth/.well-known/oauth-authorization-server'
+				oauth_discovery: '/.well-known/oauth-authorization-server'
 			}
 		});
 	} else {
@@ -288,7 +288,7 @@ app.get('/', (req: Request, res: Response) => {
 			endpoints: {
 				health: '/health',
 				mcp: '/mcp',
-				oauth_discovery: '/auth/.well-known/oauth-authorization-server'
+				oauth_discovery: '/.well-known/oauth-authorization-server'
 			},
 			authentication: {
 				methods: ['OAuth 2.0', 'Header-based'],
