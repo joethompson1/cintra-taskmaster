@@ -253,8 +253,23 @@ export class AtlassianOAuthMiddleware {
             // Decode the JWT token to get Atlassian credentials (no storage lookup needed!)
             const tokenData = statelessTokenManager.verifyMCPToken(token);
             
+            logger.info('🔍 OAuth token verification result:', {
+                tokenExists: !!tokenData,
+                hasAtlassianToken: !!tokenData?.atlassianAccessToken,
+                hasEmail: !!tokenData?.email,
+                hasCloudId: !!tokenData?.cloudId,
+                hasJiraProject: !!tokenData?.jiraProject,
+                tokenDataKeys: tokenData ? Object.keys(tokenData) : []
+            });
+            
             if (!tokenData) {
+                logger.error('❌ OAuth token verification failed - token is invalid or expired');
                 return res.status(401).json({ error: 'Invalid or expired token' });
+            }
+
+            if (!tokenData.atlassianAccessToken) {
+                logger.error('❌ OAuth token missing atlassianAccessToken field');
+                return res.status(401).json({ error: 'Invalid token - missing access token' });
             }
 
             // Add OAuth-derived credentials to request headers
@@ -263,6 +278,14 @@ export class AtlassianOAuthMiddleware {
             req.headers['x-cloud-id'] = tokenData.cloudId;
             req.headers['x-jira-project'] = tokenData.jiraProject || process.env.JIRA_PROJECT;
             req.headers['oauth-authenticated'] = 'true';
+
+            logger.info('✅ OAuth headers set successfully', {
+                hasEmail: !!req.headers['x-atlassian-email'],
+                hasToken: !!req.headers['x-oauth-token'],
+                hasCloudId: !!req.headers['x-cloud-id'],
+                hasProject: !!req.headers['x-jira-project'],
+                isOAuthAuthenticated: req.headers['oauth-authenticated'] === 'true'
+            });
 
             next();
         } catch (error) {

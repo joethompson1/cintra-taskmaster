@@ -72,7 +72,7 @@ function extractCredentials(req: Request) {
 		
 		logger.info('✅ Using OAuth authentication for session credentials');
 		
-		return {
+		const credentials = {
 			JIRA_API_URL: cloudId ? `https://api.atlassian.com/ex/jira/${cloudId}` : process.env.JIRA_API_URL,
 			JIRA_EMAIL: req.headers['x-atlassian-email'] as string,
 			JIRA_API_TOKEN: oauthToken, // Use OAuth token as API token
@@ -82,6 +82,19 @@ function extractCredentials(req: Request) {
 			BITBUCKET_API_TOKEN: oauthToken, // Use same OAuth token for Bitbucket
 			IS_OAUTH: true, // Flag to indicate OAuth authentication
 		};
+		
+		logger.info('🔍 OAuth credentials extracted:', {
+			hasJiraApiUrl: !!credentials.JIRA_API_URL,
+			hasJiraEmail: !!credentials.JIRA_EMAIL,
+			hasJiraToken: !!credentials.JIRA_API_TOKEN,
+			hasJiraProject: !!credentials.JIRA_PROJECT,
+			jiraApiUrl: credentials.JIRA_API_URL,
+			jiraEmail: credentials.JIRA_EMAIL,
+			jiraProject: credentials.JIRA_PROJECT,
+			isOAuth: credentials.IS_OAUTH
+		});
+		
+		return credentials;
 	} else {
 		// Header-based authentication (for Cursor/MCP clients with headers)
 		// If headers are present, use them; otherwise use environment variables as fallback
