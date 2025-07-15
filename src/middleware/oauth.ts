@@ -180,23 +180,31 @@ export class AtlassianOAuthMiddleware {
             isInitialize: isInitializeRequest(req.body)
         });
         
-        // Check if required headers are present for header-based authentication
-        const hasHeaderAuth = this.hasRequiredHeaders(req);
+        // Force OAuth-only authentication for /mcp endpoint (Claude.ai requirement)
+        const isMcpEndpoint = req.url === '/mcp' || req.url.startsWith('/mcp?');
         
-        logger.info('Header authentication check', {
-            hasHeaderAuth,
-            headers: {
-                'x-atlassian-email': !!req.headers['x-atlassian-email'],
-                'x-jira-api-token': !!req.headers['x-jira-api-token'],
-                'x-jira-project': !!req.headers['x-jira-project']
+        if (isMcpEndpoint) {
+            logger.info('🔐 MCP endpoint detected - forcing OAuth-only authentication');
+            // Skip header-based authentication check for MCP endpoint
+        } else {
+            // Check if required headers are present for header-based authentication
+            const hasHeaderAuth = this.hasRequiredHeaders(req);
+            
+            logger.info('Header authentication check', {
+                hasHeaderAuth,
+                headers: {
+                    'x-atlassian-email': !!req.headers['x-atlassian-email'],
+                    'x-jira-api-token': !!req.headers['x-jira-api-token'],
+                    'x-jira-project': !!req.headers['x-jira-project']
+                }
+            });
+            
+            if (hasHeaderAuth) {
+                // Headers are present, use header-based authentication
+                logger.info('✅ Using header-based authentication (headers provided)');
+                req.headers['oauth-authenticated'] = 'false'; // Mark as non-OAuth
+                return next();
             }
-        });
-        
-        if (hasHeaderAuth) {
-            // Headers are present, use header-based authentication
-            logger.info('✅ Using header-based authentication (headers provided)');
-            req.headers['oauth-authenticated'] = 'false'; // Mark as non-OAuth
-            return next();
         }
         
         // No headers present, check if this is an OAuth authenticated request
@@ -210,7 +218,8 @@ export class AtlassianOAuthMiddleware {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             // Allow MCP initialize requests to pass through without OAuth
             // but require OAuth for all other requests
-            if (isInitialize && !sessionId) {
+            // EXCEPT for /mcp endpoint which must be OAuth-only (Claude.ai requirement)
+            if (isInitialize && !sessionId && !isMcpEndpoint) {
                 logger.info('✅ Allowing MCP initialize request without OAuth (will trigger OAuth flow later)');
                 req.headers['oauth-authenticated'] = 'false'; // Mark as non-OAuth
                 return next();
@@ -221,7 +230,11 @@ export class AtlassianOAuthMiddleware {
             const discoveryUrl = `/.well-known/oauth-authorization-server`;
             const authUrl = `${baseUrl}/auth/authorize`;
             
-            logger.info('❌ No OAuth token provided, returning 401');
+            if (isMcpEndpoint) {
+                logger.info('🔐 MCP endpoint requires OAuth authentication - returning 401 to trigger OAuth flow');
+            } else {
+                logger.info('❌ No OAuth token provided, returning 401');
+            }
             
             return res.status(401).set({
                 'WWW-Authenticate': `Bearer realm="MCP Server", authorization_uri="${authUrl}"`,
