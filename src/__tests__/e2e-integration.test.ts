@@ -19,7 +19,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
     let serverUrl: string;
     let testApp: any;
     let mcpServer: McpServer;
-    let toolHandlers: Map<string, any> = new Map();
+    const toolHandlers: Map<string, any> = new Map();
     
     // SAFETY: Unique test identifier to prevent collision with real tickets
     const TEST_TIMESTAMP = Date.now();
@@ -271,9 +271,9 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
             .send({
                 title: `${TEST_IDENTIFIER} - Epic`,
                 description: `# Test Epic for E2E Integration Testing\n\nThis epic was created by automated tests and will be automatically deleted.\n\n**Test ID:** ${TEST_IDENTIFIER}\n**Created:** ${new Date().toISOString()}`,
-                acceptanceCriteria: `- [ ] All child tasks completed\n- [ ] All tests passing\n- [ ] No real tickets affected`,
-                details: `## Test Epic Details\n- **Framework:** E2E Testing\n- **Purpose:** Validate all cintra-taskmaster tools\n- **Safety:** Multiple layers prevent real ticket impact`,
-                testStrategy: `## Test Strategy\n- Create epic → task → subtasks hierarchy\n- Test all 9 tools\n- Verify complete cleanup`,
+                acceptanceCriteria: '- [ ] All child tasks completed\n- [ ] All tests passing\n- [ ] No real tickets affected',
+                details: '## Test Epic Details\n- **Framework:** E2E Testing\n- **Purpose:** Validate all cintra-taskmaster tools\n- **Safety:** Multiple layers prevent real ticket impact',
+                testStrategy: '## Test Strategy\n- Create epic → task → subtasks hierarchy\n- Test all 9 tools\n- Verify complete cleanup',
                 issueType: 'Epic',
                 priority: 'Medium'
             });
@@ -336,9 +336,9 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
             .send({
                 title: `${TEST_IDENTIFIER} - Main Task`,
                 description: `# Main Task for E2E Testing\n\nThis task will be expanded into subtasks to test the full workflow.\n\n**Parent Epic:** ${testData.epicId}\n**Test ID:** ${TEST_IDENTIFIER}`,
-                acceptanceCriteria: `- [ ] Task expansion works correctly\n- [ ] All subtasks created\n- [ ] Status transitions work\n- [ ] Comments can be added\n- [ ] Updates preserve formatting`,
-                details: `## Implementation Steps\n1. **Create subtasks** via expand tool\n2. **Test status changes** on subtasks\n3. **Add comments** to verify functionality\n4. **Update content** to test LLM integration\n5. **Verify all operations** work correctly`,
-                testStrategy: `## Testing Approach\n- **Unit Testing:** Each tool individually\n- **Integration Testing:** Full workflow\n- **Safety Testing:** Verify no real tickets affected`,
+                acceptanceCriteria: '- [ ] Task expansion works correctly\n- [ ] All subtasks created\n- [ ] Status transitions work\n- [ ] Comments can be added\n- [ ] Updates preserve formatting',
+                details: '## Implementation Steps\n1. **Create subtasks** via expand tool\n2. **Test status changes** on subtasks\n3. **Add comments** to verify functionality\n4. **Update content** to test LLM integration\n5. **Verify all operations** work correctly',
+                testStrategy: '## Testing Approach\n- **Unit Testing:** Each tool individually\n- **Integration Testing:** Full workflow\n- **Safety Testing:** Verify no real tickets affected',
                 issueType: 'Task',
                 priority: 'Medium',
                 parentKey: testData.epicId
@@ -428,8 +428,8 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
             console.log(`✅ Task expanded into ${subtaskIds.length} subtasks: ${subtaskIds.join(', ')}`);
         } catch (error) {
             console.log(`⚠️  expand_jira_task tool timed out or failed: ${error}`);
-            console.log(`⚠️  This is expected if AI services are slow or unavailable`);
-            console.log(`⚠️  Continuing with other tests...`);
+            console.log('⚠️  This is expected if AI services are slow or unavailable');
+            console.log('⚠️  Continuing with other tests...');
             
             // Test passes even if expand fails - this is an optional feature
             expect(true).toBe(true);
@@ -531,7 +531,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
             .post('/tools/update_jira_task')
             .send({
                 id: testData.taskId,
-                prompt: `Mark the first acceptance criteria as complete by changing "- [ ]" to "- [x]" for the first item only. Keep all other acceptance criteria unchanged.`
+                prompt: 'Mark the first acceptance criteria as complete by changing "- [ ]" to "- [x]" for the first item only. Keep all other acceptance criteria unchanged.'
             });
 
         expect(response.status).toBe(200);
@@ -650,6 +650,6 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
         delete testData.taskId;
         delete testData.commentId;
 
-        console.log(`\n🎉 Complete cleanup verified - board restored to original state`);
+        console.log('\n🎉 Complete cleanup verified - board restored to original state');
     }, 60000); // Extended timeout for cleanup
 }); 

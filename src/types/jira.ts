@@ -5,11 +5,13 @@ export interface JiraConfig {
     email: string;
     apiToken: string;
     project: string;
+    isOAuth?: boolean;
 }
 
 export interface JiraValidationResult {
     success: boolean;
     missingFields: string[];
+    error?: string;
 }
 
 export interface JiraErrorResponse {

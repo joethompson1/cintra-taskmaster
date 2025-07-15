@@ -4,13 +4,13 @@
  * @returns {Object} - Error content response object in McpServer format
  */
 export function createErrorResponse(errorMessage: string) {
-	return {
-		content: [
-			{
-				type: 'text' as const,
-				text: `Error: ${errorMessage}`
-			}
-		],
-		isError: true
-	};
+    return {
+        content: [
+            {
+                type: 'text' as const,
+                text: `Error: ${errorMessage}`
+            }
+        ],
+        isError: true
+    };
 }

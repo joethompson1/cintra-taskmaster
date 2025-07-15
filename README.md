@@ -1,18 +1,35 @@
-# TypeScript MCP Server with Authentication
+# Cintra-Taskmaster MCP Server
 
-A comprehensive starter project for building a Model Context Protocol (MCP) server with TypeScript and HTTP authentication support, designed for cloud deployment.
+A TypeScript MCP (Model Context Protocol) server for Jira and Bitbucket task management with OAuth 2.0 support for Claude and header-based authentication for Cursor.
 
 ## Features
 
-- 🔐 **OAuth Authentication**: Proxy OAuth provider support for secure authentication
-- 🌐 **HTTP Transport**: StreamableHTTP transport for modern cloud deployment
-- 🛡️ **Security**: Helmet, CORS, and input validation
+- 🌐 **Dual Authentication**: OAuth 2.0 for Claude, header-based for Cursor
+- 🔐 **Atlassian OAuth 2.0 (3LO)**: Stateless JWT-based OAuth implementation
+- 📋 **Jira Integration**: Create, read, update, delete tasks and subtasks
+- 🔄 **Bitbucket Integration**: Link PRs to Jira tickets with context
+- 🛡️ **Security**: Stateless JWT tokens, CSRF protection, CORS configuration
 - 📝 **Logging**: Structured logging with Winston
 - 🔧 **TypeScript**: Full TypeScript support with strict type checking
-- ☁️ **Cloud Ready**: Docker support and environment-based configuration
-- 🧪 **Testing**: Jest testing framework with TypeScript support
-- 📊 **Health Checks**: Built-in health monitoring endpoints
-- 🎯 **MCP Features**: Tools, resources, and prompts implementation
+- ☁️ **Serverless Ready**: Stateless design perfect for serverless deployments
+- 🧪 **Testing**: Jest testing framework with E2E tests
+- 📊 **Health Checks**: Built-in health monitoring with OAuth status
+
+## Authentication Methods
+
+This MCP server supports two authentication methods:
+
+### 1. OAuth 2.0 (for Claude)
+- Uses Atlassian OAuth 2.0 (3LO) flow
+- Stateless JWT tokens (no external storage required)
+- Automatic token refresh
+- Bearer token authentication to Jira/Bitbucket APIs
+
+### 2. Header-based (for Cursor)
+- Direct API token authentication
+- Pass credentials via HTTP headers
+- Basic authentication to Jira/Bitbucket APIs
+- Suitable for local development
 
 ## Quick Start
 
@@ -20,11 +37,12 @@ A comprehensive starter project for building a Model Context Protocol (MCP) serv
 
 - Node.js 18 or higher
 - npm or yarn
-- Docker (optional, for containerized deployment)
+- Atlassian account with API access
+- Jira project with appropriate permissions
 
 ### Installation
 
-1. Clone or download this starter project
+1. Clone or download this project
 2. Install dependencies:
    ```bash
    npm install
@@ -35,15 +53,32 @@ A comprehensive starter project for building a Model Context Protocol (MCP) serv
    cp .env.example .env
    ```
 
-4. Update the `.env` file with your OAuth provider configuration:
+4. Update the `.env` file with your configuration:
    ```bash
-   # Update these with your actual OAuth provider details
-   OAUTH_AUTHORIZATION_URL=https://your-oauth-provider.com/oauth2/v1/authorize
-   OAUTH_TOKEN_URL=https://your-oauth-provider.com/oauth2/v1/token
-   OAUTH_REVOCATION_URL=https://your-oauth-provider.com/oauth2/v1/revoke
-   OAUTH_CLIENT_ID=your-actual-client-id
-   OAUTH_CLIENT_SECRET=your-actual-client-secret
-   ISSUER_URL=https://your-oauth-provider.com
+   # Jira Configuration (required)
+   JIRA_API_URL=https://your-domain.atlassian.net
+   JIRA_PROJECT=YOUR-PROJECT-KEY
+   
+   # For header-based auth (Cursor)
+   JIRA_EMAIL=your-email@example.com
+   JIRA_API_TOKEN=your-jira-api-token
+   
+   # Bitbucket Configuration (optional)
+   BITBUCKET_WORKSPACE=your-workspace
+   BITBUCKET_EMAIL=your-email@example.com
+   BITBUCKET_API_TOKEN=your-bitbucket-api-token
+   
+   # OAuth Configuration (for Claude)
+   ATLASSIAN_CLIENT_ID=your-atlassian-oauth-client-id
+   ATLASSIAN_CLIENT_SECRET=your-atlassian-oauth-client-secret
+   MCP_CLIENT_ID=${ATLASSIAN_CLIENT_ID}
+   MCP_CLIENT_SECRET=${ATLASSIAN_CLIENT_SECRET}
+   
+   # Server Configuration
+   BASE_URL=http://localhost:3000
+   OAUTH_CALLBACK_URL=${BASE_URL}/auth/callback
+   JWT_SECRET=your-jwt-secret-key
+   PORT=3000
    ```
 
 5. Build and start the server:
@@ -65,20 +100,78 @@ Visit `http://localhost:3000/health` to verify the server is running.
 
 ```
 src/
-├── index.ts              # Main server entry point
+├── index.ts                    # Main server entry point
 ├── server/
-│   └── mcpServer.ts      # MCP server setup and handlers
-├── utils/
-│   ├── logger.ts         # Winston logging configuration
-│   └── config.ts         # Environment validation
+│   ├── mcpServer.ts           # MCP server setup and tool registration
+│   └── tools/                 # Individual MCP tool implementations
+│       ├── get-task.ts        # Get Jira task details
+│       ├── next-task.ts       # Find next task to work on
+│       ├── add-task.ts        # Create new Jira issues
+│       ├── update-task.ts     # Update existing tasks
+│       ├── set-task-status.ts # Change task status
+│       ├── remove-task.ts     # Delete tasks
+│       ├── expand-jira-task.ts # Expand tasks into subtasks
+│       ├── add-jira-comment.ts # Add comments to tasks
+│       └── get-jira-attachment.ts # Get task attachments
 ├── middleware/
-│   └── auth.ts           # Authentication middleware
+│   ├── oauth.ts               # OAuth middleware and token management
+│   └── mcp-oauth-endpoints.ts # OAuth discovery and token endpoints
+├── utils/
+│   ├── jira/                  # Jira API client and utilities
+│   ├── bitbucket/             # Bitbucket API client and utilities
+│   ├── logger.ts              # Winston logging configuration
+│   └── config.ts              # Configuration management
 ├── types/
-│   └── index.ts          # TypeScript type definitions
-└── __tests__/
-    ├── setup.ts          # Test setup
-    └── server.test.ts    # Basic tests
+│   ├── index.ts               # General TypeScript definitions
+│   └── jira.ts                # Jira-specific type definitions
+└── __tests__/                 # Test files
 ```
+
+## MCP Tools
+
+### Jira Task Management
+
+- **`get_jira_task`**: Get detailed information about a specific Jira task
+  - Supports images, comments, context, and subtasks
+  - Includes related tickets and PR context
+  
+- **`next_jira_task`**: Find the next Jira task to work on based on dependencies and status
+  - Dependency-aware task selection
+  - Supports filtering by parent epic
+  
+- **`add_jira_issue`**: Create new Jira issues with markdown support
+  - Full markdown formatting support
+  - Automatic ADF (Atlassian Document Format) conversion
+  - Support for epics, tasks, subtasks, and bugs
+  
+- **`update_jira_task`**: Update existing tasks using AI-powered field detection
+  - LLM-powered intelligent field updates
+  - Preserves unchanged content
+  - Supports all ticket fields
+  
+- **`set_jira_task_status`**: Change the status of one or more tasks
+  - Batch status updates
+  - Supports all Jira workflow transitions
+  
+- **`remove_jira_task`**: Delete tasks from Jira
+  - Supports single or multiple task deletion
+  - Batch operations with detailed results
+  
+- **`expand_jira_task`**: Expand tasks into subtasks using AI
+  - AI-generated subtask breakdown
+  - Automatic dependency linking
+  - Configurable subtask count
+
+### Attachments and Comments
+
+- **`get_jira_attachment`**: Get Jira attachments with automatic file type detection
+  - Supports images (base64), PDFs, DOCX, and text files
+  - Automatic text extraction from documents
+  - Thumbnail support for images
+  
+- **`add_jira_comment`**: Add comments to Jira issues
+  - Markdown support in comments
+  - Automatic ADF conversion
 
 ## Configuration
 
@@ -88,14 +181,20 @@ src/
 |----------|-------------|----------|
 | `PORT` | Server port | No (default: 3000) |
 | `NODE_ENV` | Environment (development/production) | No |
-| `BASE_URL` | Base URL for the server | Yes |
-| `OAUTH_AUTHORIZATION_URL` | OAuth authorization endpoint | Yes |
-| `OAUTH_TOKEN_URL` | OAuth token endpoint | Yes |
-| `OAUTH_REVOCATION_URL` | OAuth revocation endpoint | Yes |
-| `OAUTH_CLIENT_ID` | OAuth client ID | Yes |
-| `OAUTH_CLIENT_SECRET` | OAuth client secret | Yes |
-| `ISSUER_URL` | OAuth issuer URL | Yes |
-| `SERVICE_DOCUMENTATION_URL` | Service documentation URL | Yes |
+| `BASE_URL` | Base URL for the server | Yes (for OAuth) |
+| `JIRA_API_URL` | Jira instance URL | Yes |
+| `JIRA_PROJECT` | Jira project key | Yes |
+| `JIRA_EMAIL` | Jira user email (header auth only) | No |
+| `JIRA_API_TOKEN` | Jira API token (header auth only) | No |
+| `BITBUCKET_WORKSPACE` | Bitbucket workspace | No |
+| `BITBUCKET_EMAIL` | Bitbucket user email | No |
+| `BITBUCKET_API_TOKEN` | Bitbucket API token | No |
+| `ATLASSIAN_CLIENT_ID` | OAuth client ID | Yes (for OAuth) |
+| `ATLASSIAN_CLIENT_SECRET` | OAuth client secret | Yes (for OAuth) |
+| `MCP_CLIENT_ID` | MCP client ID (usually same as Atlassian) | Yes (for OAuth) |
+| `MCP_CLIENT_SECRET` | MCP client secret (usually same as Atlassian) | Yes (for OAuth) |
+| `OAUTH_CALLBACK_URL` | OAuth callback URL | Yes (for OAuth) |
+| `JWT_SECRET` | JWT signing secret | Yes (for OAuth) |
 | `ALLOWED_ORIGINS` | CORS allowed origins (comma-separated) | No |
 | `LOG_LEVEL` | Logging level (error/warn/info/debug) | No |
 
@@ -103,33 +202,18 @@ src/
 
 ### Core Endpoints
 
-- `GET /health` - Health check endpoint
-- `POST /mcp` - MCP protocol endpoint (requires session ID)
-- `GET /mcp` - MCP protocol endpoint (requires session ID)
+- `GET /health` - Health check endpoint with OAuth status
+- `POST /mcp` - MCP protocol endpoint (requires authentication)
+- `GET /mcp` - MCP protocol endpoint (requires authentication)
 
-### Authentication Endpoints
+### OAuth Endpoints
 
-- `GET /auth/.well-known/oauth-authorization-server` - OAuth discovery
-- `GET /auth/authorize` - OAuth authorization
-- `POST /auth/token` - OAuth token exchange
+- `GET /auth/.well-known/oauth-authorization-server` - OAuth discovery metadata
+- `POST /auth/register` - Client registration (returns pre-configured credentials)
+- `GET /auth/authorize` - OAuth authorization endpoint
+- `GET /auth/callback` - OAuth callback handler
+- `POST /auth/token` - OAuth token exchange and refresh
 - `POST /auth/revoke` - OAuth token revocation
-
-## MCP Features
-
-### Tools
-
-- **echo**: Echo back input text
-- **get_time**: Get current server time in various formats
-
-### Resources
-
-- **config://server**: Server configuration and status
-- **info://about**: Server information
-
-### Prompts
-
-- **server_status**: Get detailed server status
-- **welcome_message**: Generate welcome message for users
 
 ## Development
 
@@ -145,20 +229,25 @@ npm run lint:fix   # Fix ESLint issues
 npm run clean      # Clean build directory
 ```
 
-### Adding New Features
+### Testing with MCP Inspector
 
-1. **Tools**: Add new tools in `src/server/mcpServer.ts` in the `CallToolRequestSchema` handler
-2. **Resources**: Add new resources in the `ReadResourceRequestSchema` handler
-3. **Prompts**: Add new prompts in the `GetPromptRequestSchema` handler
+1. Install MCP Inspector:
+   ```bash
+   npx @modelcontextprotocol/inspector
+   ```
 
-### Testing
+2. Configure your server URL: `http://localhost:3000/mcp`
 
-Run tests with:
-```bash
-npm test
-```
+3. Complete the OAuth flow through the Inspector interface
 
-Add new tests in the `src/__tests__/` directory.
+4. Test the available tools and their functionality
+
+### Adding New Tools
+
+1. Create a new file in `src/server/tools/`
+2. Implement the tool using the `server.registerTool()` pattern
+3. Register the tool in `src/server/mcpServer.ts`
+4. Add appropriate TypeScript types in `src/types/`
 
 ## Deployment
 
@@ -166,8 +255,8 @@ Add new tests in the `src/__tests__/` directory.
 
 Build and run with Docker:
 ```bash
-docker build -t mcp-server .
-docker run -p 3000:3000 --env-file .env mcp-server
+docker build -t cintra-taskmaster .
+docker run -p 3000:3000 --env-file .env cintra-taskmaster
 ```
 
 ### Docker Compose
@@ -177,74 +266,48 @@ For local development:
 docker-compose up
 ```
 
-For production with nginx:
-```bash
-docker-compose --profile production up
-```
-
-### Cloud Platforms
-
-This server is designed to work with major cloud platforms:
-
-- **AWS**: Deploy using ECS, Lambda, or Elastic Beanstalk
-- **Google Cloud**: Deploy using Cloud Run or App Engine
-- **Azure**: Deploy using Container Instances or App Service
-- **Heroku**: Deploy using container registry
-
 ## Security Considerations
 
-1. **Environment Variables**: Never commit `.env` files with actual secrets
-2. **OAuth Configuration**: Ensure your OAuth provider is properly configured
-3. **CORS**: Configure allowed origins appropriately for your use case
-4. **HTTPS**: Always use HTTPS in production
-5. **Token Validation**: Implement proper token validation in the `verifyAccessToken` function
+1. **Environment Variables**: Never commit `.env` files with secrets
+2. **JWT Secrets**: Use strong, unique JWT secrets in production
+3. **OAuth Configuration**: Ensure OAuth callback URLs are properly configured
+4. **CORS**: Configure allowed origins appropriately
+5. **HTTPS**: Always use HTTPS in production
+6. **Token Validation**: JWT tokens are stateless and self-contained
 
-## Customization
+## OAuth Implementation Details
 
-### OAuth Provider Integration
+This server implements a **stateless OAuth proxy** that:
 
-Update the `ProxyOAuthServerProvider` configuration in `src/index.ts`:
+1. **Handles OAuth flows** between Claude and Atlassian
+2. **Creates JWT tokens** containing Atlassian access tokens
+3. **Eliminates external storage** requirements (Redis, databases)
+4. **Supports token refresh** automatically
+5. **Works in serverless environments** without persistent storage
 
-```typescript
-const proxyProvider = new ProxyOAuthServerProvider({
-    endpoints: {
-        authorizationUrl: process.env.OAUTH_AUTHORIZATION_URL!,
-        tokenUrl: process.env.OAUTH_TOKEN_URL!,
-        revocationUrl: process.env.OAUTH_REVOCATION_URL!,
-    },
-    verifyAccessToken: async (token) => {
-        // Implement your token verification logic here
-        // Make requests to your OAuth provider to validate tokens
-    },
-    getClient: async (clientId) => {
-        // Implement your client validation logic here
-        // Return client configuration based on clientId
-    }
-});
-```
-
-### Adding Custom Middleware
-
-Add custom middleware in `src/index.ts`:
-
-```typescript
-app.use('/api', yourCustomMiddleware);
-```
+The OAuth flow:
+1. Client requests authorization → Server redirects to Atlassian
+2. User authorizes → Atlassian redirects back with auth code
+3. Server exchanges code for Atlassian tokens
+4. Server creates JWT containing Atlassian tokens
+5. Client uses JWT for subsequent API calls
+6. Server decodes JWT and uses Atlassian tokens for API requests
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Port Already in Use**: Change the `PORT` environment variable
-2. **OAuth Errors**: Verify your OAuth provider configuration
-3. **CORS Issues**: Check your `ALLOWED_ORIGINS` configuration
-4. **Build Errors**: Ensure all dependencies are installed with `npm install`
+1. **OAuth callback errors**: Check `OAUTH_CALLBACK_URL` matches Atlassian app config
+2. **JWT token errors**: Ensure `JWT_SECRET` is set and consistent
+3. **Jira API errors**: Verify `JIRA_API_URL` and project permissions
+4. **CORS issues**: Check `ALLOWED_ORIGINS` configuration
+5. **Build errors**: Run `npm install` and check TypeScript configuration
 
 ### Logs
 
 Logs are written to:
-- `logs/combined.log` - All logs
-- `logs/error.log` - Error logs only
+- `logs/combined-YYYY-MM-DD.log` - All logs with timestamps
+- `logs/error-YYYY-MM-DD.log` - Error logs only
 - Console output (development mode)
 
 ## Contributing
@@ -264,5 +327,6 @@ MIT License - see LICENSE file for details.
 
 - [Model Context Protocol Documentation](https://modelcontextprotocol.io)
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
-- [MCP Specification](https://modelcontextprotocol.io/specification)
-- [OAuth 2.0 RFC](https://tools.ietf.org/html/rfc6749)
+- [Atlassian OAuth 2.0 Documentation](https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/)
+- [Jira REST API Documentation](https://developer.atlassian.com/cloud/jira/platform/rest/v3/)
+- [Bitbucket REST API Documentation](https://developer.atlassian.com/cloud/bitbucket/rest/)

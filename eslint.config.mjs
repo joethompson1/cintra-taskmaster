@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
+import globals from 'globals';
 
 export default [
     eslint.configs.recommended,
@@ -11,7 +12,12 @@ export default [
             parserOptions: {
                 ecmaVersion: 2022,
                 sourceType: 'module',
-                project: './tsconfig.json'
+                // Remove project reference for test files to avoid tsconfig issues
+                project: null
+            },
+            globals: {
+                ...globals.node,
+                ...globals.es2022
             }
         },
         plugins: {
@@ -31,7 +37,13 @@ export default [
         }
     },
     {
-        files: ['**/*.test.ts'],
+        files: ['**/__tests__/**/*.ts', '**/*.test.ts', '**/*.spec.ts', '**/setup.ts'],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+                ...globals.jest
+            }
+        },
         rules: {
             '@typescript-eslint/explicit-function-return-type': 'off',
             'no-console': 'off'

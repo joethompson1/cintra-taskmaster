@@ -58,15 +58,24 @@ export class JiraClient {
     constructor(config?: Partial<JiraConfig>) {
         this.config = config ? config as JiraConfig : JiraClient.getJiraConfig();
         
+        // Check if this is OAuth authentication (no email required)
+        const isOAuth = (config as any)?.isOAuth || false;
+        
         // Check if configuration has all required fields
-        this.enabled = !!(this.config.baseUrl && this.config.email && this.config.apiToken && this.config.project);
+        // For OAuth, email is not required
+        if (isOAuth) {
+            this.enabled = !!(this.config.baseUrl && this.config.apiToken && this.config.project);
+        } else {
+            this.enabled = !!(this.config.baseUrl && this.config.email && this.config.apiToken && this.config.project);
+        }
 
         if (this.enabled) {
             try {
-                this.client = this.createJiraClient(this.config);
+                this.client = this.createJiraClient(this.config, isOAuth);
             } catch (error) {
                 this.client = null;
                 this.error = (error as Error).message;
+                this.enabled = false;
             }
         } else {
             this.client = null;
@@ -91,28 +100,44 @@ export class JiraClient {
     /**
      * Create an authenticated Axios instance for Jira API requests
      * @param config - Jira configuration
+     * @param isOAuth - Whether this is OAuth authentication
      * @returns Axios instance configured for Jira
      */
-    createJiraClient(config: JiraConfig): AxiosInstance {
+    createJiraClient(config: JiraConfig, isOAuth: boolean = false): AxiosInstance {
         const { baseUrl, email, apiToken } = config;
 
-        if (!baseUrl || !email || !apiToken) {
+        if (!baseUrl || !apiToken) {
             throw new Error(
-                'Missing required Jira API configuration. Please set JIRA_API_URL, JIRA_EMAIL, and JIRA_API_TOKEN environment variables.'
+                'Missing required Jira API configuration. Please set JIRA_API_URL and JIRA_API_TOKEN environment variables.'
             );
         }
 
-        return axios.create({
+        if (!isOAuth && !email) {
+            throw new Error(
+                'Missing required Jira API configuration. Please set JIRA_EMAIL environment variable.'
+            );
+        }
+
+        const axiosConfig: any = {
             baseURL: baseUrl,
-            auth: {
-                username: email,
-                password: apiToken
-            },
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json'
             }
-        });
+        };
+
+        if (isOAuth) {
+            // Use Bearer token authentication for OAuth
+            axiosConfig.headers['Authorization'] = `Bearer ${apiToken}`;
+        } else {
+            // Use Basic authentication for traditional API tokens
+            axiosConfig.auth = {
+                username: email,
+                password: apiToken
+            };
+        }
+
+        return axios.create(axiosConfig);
     }
 
     /**
@@ -126,13 +151,17 @@ export class JiraClient {
             missingFields: []
         };
 
+        // Check if this is OAuth authentication
+        const isOAuth = (this.config as any)?.isOAuth || false;
+
         // Check required fields
         if (!this.config.baseUrl) {
             result.success = false;
             result.missingFields.push('baseUrl');
         }
 
-        if (!this.config.email) {
+        // Email is only required for non-OAuth authentication
+        if (!isOAuth && !this.config.email) {
             result.success = false;
             result.missingFields.push('email');
         }
@@ -162,12 +191,12 @@ export class JiraClient {
             }
             if (result.missingFields.includes('email')) {
                 log.error(
-                    '- JIRA_EMAIL: Email address associated with your Jira account'
+                    '- JIRA_EMAIL: Email address associated with your Jira account (not required for OAuth)'
                 );
             }
             if (result.missingFields.includes('apiToken')) {
                 log.error(
-                    '- JIRA_API_TOKEN: API token generated from your Atlassian account'
+                    '- JIRA_API_TOKEN: API token generated from your Atlassian account (or OAuth access token)'
                 );
             }
             if (result.missingFields.includes('project')) {

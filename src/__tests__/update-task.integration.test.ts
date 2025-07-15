@@ -22,7 +22,7 @@ describe('Update Task Tool Integration Tests (Real Jira API)', () => {
     // Alternative approach: Create a test server that directly exposes the tool
     let testApp: any;
     let mcpServer: McpServer;
-    let toolHandlers: Map<string, any> = new Map();
+    const toolHandlers: Map<string, any> = new Map();
 
     beforeAll(async () => {
         // Restore console methods for integration tests (setup.ts mocks them)

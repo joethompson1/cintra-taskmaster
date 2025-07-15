@@ -1,6 +1,10 @@
+// Load environment variables from .env file FIRST
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import dotenv from 'dotenv';
+import cors from 'cors';
 // @ts-ignore
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 // @ts-ignore
@@ -9,12 +13,42 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { setupMcpServer } from './server/mcpServer';
 import { logger } from './utils/logger';
-
-// Load environment variables from .env file
-dotenv.config();
+import { oauthMiddleware } from './middleware/oauth';
+import { createMCPOAuthRouter } from './middleware/mcp-oauth-endpoints';
 
 const app = express();
+
+// Configure CORS to allow MCP Inspector and other clients
+app.use(cors({
+	origin: [
+		'http://localhost:6274', // MCP Inspector default port
+		'http://localhost:5173', // Vite dev server
+		'http://localhost:3001', // Common dev port
+		'https://claude.ai',     // Claude web interface
+		...(process.env.ALLOWED_ORIGINS?.split(',') || [])
+	],
+	credentials: true,
+	methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+	allowedHeaders: [
+		'Content-Type', 
+		'Authorization', 
+		'x-mcp-session-id', 
+		'mcp-session-id', 
+		'Origin', 
+		'Accept',
+		// Authentication headers
+		'x-atlassian-email',
+		'x-jira-api-token',
+		'x-jira-project',
+		'x-bitbucket-api-token'
+	]
+}));
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Mount OAuth routes
+app.use(createMCPOAuthRouter());
 
 // Store both transports and session configs
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
@@ -22,19 +56,59 @@ const sessionConfigs: { [sessionId: string]: any } = {};
 
 // Extract credentials from headers
 function extractCredentials(req: Request) {
-	return {
-		JIRA_API_URL: process.env.JIRA_API_URL,
-		JIRA_EMAIL: req.headers['x-atlassian-email'] as string,
-		JIRA_API_TOKEN: req.headers['x-jira-api-token'] as string,
-		JIRA_PROJECT: req.headers['x-jira-project'] as string,
-		BITBUCKET_WORKSPACE: process.env.BITBUCKET_WORKSPACE,
-		BITBUCKET_EMAIL: req.headers['x-atlassian-email'] as string,
-		BITBUCKET_API_TOKEN: req.headers['x-bitbucket-api-token'] as string,
-	};
+	// Debug logging
+	logger.info('🔍 Extracting credentials from request', {
+		oauthAuthenticated: req.headers['oauth-authenticated'],
+		hasJiraToken: !!req.headers['x-jira-api-token'],
+		hasAtlassianEmail: !!req.headers['x-atlassian-email'],
+		hasJiraProject: !!req.headers['x-jira-project']
+	});
+	
+	// Check if this is OAuth authenticated
+	if (req.headers['oauth-authenticated'] === 'true') {
+		// OAuth authentication - use OAuth token for Jira API
+		const oauthToken = req.headers['x-oauth-token'] as string;
+		const cloudId = req.headers['x-cloud-id'] as string;
+		
+		logger.info('✅ Using OAuth authentication for session credentials');
+		
+		return {
+			JIRA_API_URL: cloudId ? `https://api.atlassian.com/ex/jira/${cloudId}` : process.env.JIRA_API_URL,
+			JIRA_EMAIL: req.headers['x-atlassian-email'] as string,
+			JIRA_API_TOKEN: oauthToken, // Use OAuth token as API token
+			JIRA_PROJECT: req.headers['x-jira-project'] as string || process.env.JIRA_PROJECT,
+			BITBUCKET_WORKSPACE: process.env.BITBUCKET_WORKSPACE,
+			BITBUCKET_EMAIL: req.headers['x-atlassian-email'] as string,
+			BITBUCKET_API_TOKEN: oauthToken, // Use same OAuth token for Bitbucket
+			IS_OAUTH: true, // Flag to indicate OAuth authentication
+		};
+	} else {
+		// Header-based authentication (for Cursor/MCP clients with headers)
+		// If headers are present, use them; otherwise use environment variables as fallback
+		const hasHeaders = !!(req.headers['x-atlassian-email'] && req.headers['x-jira-api-token'] && req.headers['x-jira-project']);
+		
+		if (hasHeaders) {
+			logger.info('✅ Using header-based authentication for session credentials');
+		} else {
+			logger.info('⚠️  No headers present, using environment variables as fallback');
+		}
+		
+		return {
+			JIRA_API_URL: process.env.JIRA_API_URL,
+			JIRA_EMAIL: req.headers['x-atlassian-email'] as string || process.env.JIRA_EMAIL,
+			JIRA_API_TOKEN: req.headers['x-jira-api-token'] as string || process.env.JIRA_API_TOKEN,
+			JIRA_PROJECT: req.headers['x-jira-project'] as string || process.env.JIRA_PROJECT,
+			BITBUCKET_WORKSPACE: process.env.BITBUCKET_WORKSPACE,
+			BITBUCKET_EMAIL: req.headers['x-atlassian-email'] as string || process.env.BITBUCKET_EMAIL,
+			BITBUCKET_API_TOKEN: req.headers['x-bitbucket-api-token'] as string || process.env.BITBUCKET_API_TOKEN,
+			IS_OAUTH: false, // Flag to indicate non-OAuth authentication
+			HAS_HEADERS: hasHeaders, // Flag to indicate if headers were present
+		};
+	}
 }
 
 // Handle POST requests for client-to-server communication
-app.post('/mcp', async (req: Request, res: Response) => {
+app.post('/mcp', oauthMiddleware.authenticateOAuth.bind(oauthMiddleware), async (req: Request, res: Response) => {
 	logger.info('POST /mcp received', {
 		contentType: req.headers['content-type'],
 		accept: req.headers['accept'],
@@ -165,10 +239,10 @@ const handleSessionRequest = async (req: Request, res: Response) => {
 };
 
 // Handle GET requests for server-to-client notifications via SSE
-app.get('/mcp', handleSessionRequest);
+app.get('/mcp', oauthMiddleware.authenticateOAuth.bind(oauthMiddleware), handleSessionRequest);
 
 // Handle DELETE requests for session termination
-app.delete('/mcp', handleSessionRequest);
+app.delete('/mcp', oauthMiddleware.authenticateOAuth.bind(oauthMiddleware), handleSessionRequest);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
@@ -176,7 +250,11 @@ app.get('/health', (req: Request, res: Response) => {
 		status: 'healthy', 
 		timestamp: new Date().toISOString(),
 		uptime: process.uptime(),
-		sessions: Object.keys(transports).length
+		sessions: Object.keys(transports).length,
+		oauth: {
+			configured: oauthMiddleware.isConfigured(),
+			discoveryUrl: '/auth/.well-known/oauth-authorization-server'
+		}
 	});
 });
 
