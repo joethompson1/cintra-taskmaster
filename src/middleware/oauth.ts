@@ -126,8 +126,17 @@ export class AtlassianOAuthMiddleware {
             const resources = resourcesResponse.data;
             const cloudId = resources[0]?.id; // Use first available site
 
-            // Don't store tokens - return them directly for JWT encoding
-            const userId = `user_${Date.now()}`; // In production, extract from JWT
+            // Get user information from Atlassian
+            const userResponse = await axios.get('https://api.atlassian.com/me', {
+                headers: {
+                    'Authorization': `Bearer ${tokens.access_token}`,
+                    'Accept': 'application/json'
+                }
+            });
+
+            const userInfo = userResponse.data;
+            const email = userInfo.email;
+            const userId = userInfo.account_id || `user_${Date.now()}`;
 
             return {
                 sessionId: stateData.sessionId,
@@ -136,7 +145,8 @@ export class AtlassianOAuthMiddleware {
                     refreshToken: tokens.refresh_token,
                     expiresAt: Date.now() + (tokens.expires_in * 1000),
                     cloudId: cloudId,
-                    userId: userId
+                    userId: userId,
+                    email: email
                 }
             };
         } catch (error) {

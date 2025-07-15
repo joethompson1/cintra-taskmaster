@@ -187,6 +187,8 @@ export function createMCPOAuthRouter(): Router {
                 atlassianRefreshToken: result.tokens.refreshToken,
                 cloudId: result.tokens.cloudId,
                 userId: result.tokens.userId,
+                email: result.tokens.email,
+                jiraProject: process.env.JIRA_PROJECT || 'DEFAULT',
                 sessionId: result.sessionId,
                 codeChallenge: flowState.mcpCodeChallenge,
                 codeChallengeMethod: flowState.mcpCodeChallengeMethod,
