@@ -15,6 +15,8 @@ interface JWTPayload {
     jiraProject?: string;
     expiresAt: number;
     iat: number; // issued at
+    codeChallenge?: string;
+    codeChallengeMethod?: string;
 }
 
 export class StatelessTokenManager {
@@ -38,6 +40,8 @@ export class StatelessTokenManager {
         email?: string;
         jiraProject?: string;
         expiresAt: number;
+        codeChallenge?: string;
+        codeChallengeMethod?: string;
     }): string {
         const payload: JWTPayload = {
             ...data,

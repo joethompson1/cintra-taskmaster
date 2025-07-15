@@ -267,11 +267,24 @@ export function createMCPOAuthRouter(): Router {
             hasProvidedSecret: !!finalClientSecret,
             hasConfiguredSecret: !!configuredClientSecret,
             secretMatch: finalClientSecret === configuredClientSecret,
-            authMethod: authHeader ? authHeader.split(' ')[0] : 'body'
+            authMethod: authHeader ? authHeader.split(' ')[0] : 'body',
+            hasPKCEVerifier: !!code_verifier,
+            isPKCEFlow: !!code_verifier && !finalClientSecret
         });
 
-        if (finalClientId !== configuredClientId || finalClientSecret !== configuredClientSecret) {
-            logger.error('Client authentication failed');
+        // For PKCE flows (like Claude.ai), only validate client_id
+        // For traditional flows, validate both client_id and client_secret
+        if (finalClientId !== configuredClientId) {
+            logger.error('Client ID validation failed');
+            return res.status(401).json({
+                error: 'invalid_client',
+                error_description: 'Invalid client_id'
+            });
+        }
+
+        // Only require client_secret for non-PKCE flows
+        if (!code_verifier && finalClientSecret !== configuredClientSecret) {
+            logger.error('Client secret validation failed for non-PKCE flow');
             return res.status(401).json({
                 error: 'invalid_client',
                 error_description: 'Client authentication failed'
@@ -303,7 +316,42 @@ export function createMCPOAuthRouter(): Router {
                     });
                 }
 
-                // TODO: Validate PKCE code_verifier if codeData.codeChallenge was provided
+                // Validate PKCE code_verifier if this is a PKCE flow
+                if (codeData.codeChallenge && code_verifier) {
+                    const crypto = require('crypto');
+                    const challengeMethod = codeData.codeChallengeMethod || 'S256';
+                    
+                    let computedChallenge;
+                    if (challengeMethod === 'S256') {
+                        computedChallenge = crypto.createHash('sha256')
+                            .update(code_verifier)
+                            .digest('base64url');
+                    } else if (challengeMethod === 'plain') {
+                        computedChallenge = code_verifier;
+                    } else {
+                        logger.error('Unsupported PKCE challenge method:', challengeMethod);
+                        return res.status(400).json({
+                            error: 'invalid_request',
+                            error_description: 'Unsupported code challenge method'
+                        });
+                    }
+                    
+                    if (computedChallenge !== codeData.codeChallenge) {
+                        logger.error('PKCE code_verifier validation failed');
+                        return res.status(400).json({
+                            error: 'invalid_grant',
+                            error_description: 'Invalid code_verifier'
+                        });
+                    }
+                    
+                    logger.info('PKCE validation successful');
+                } else if (codeData.codeChallenge) {
+                    logger.error('Missing code_verifier for PKCE flow');
+                    return res.status(400).json({
+                        error: 'invalid_request',
+                        error_description: 'Missing code_verifier for PKCE flow'
+                    });
+                }
 
                 // Create a new JWT token with longer expiry for Claude to use
                 const accessTokenPayload = {
