@@ -168,7 +168,7 @@ export class AtlassianOAuthMiddleware {
 
     /**
      * Middleware to extract OAuth tokens and convert to session config
-     * Falls back to OAuth authentication if headers are not present
+     * Defaults to OAuth authentication but falls back to header-based auth if headers are present
      */
     async authenticateOAuth(req: Request, res: Response, next: NextFunction) {
         // Debug logging
@@ -181,47 +181,41 @@ export class AtlassianOAuthMiddleware {
             isInitialize: isInitializeRequest(req.body)
         });
         
-        // Force OAuth-only authentication for /mcp endpoint (Claude.ai requirement)
+        // Check if required headers are present for header-based authentication
+        // This takes priority over OAuth if headers are provided
+        const hasHeaderAuth = this.hasRequiredHeaders(req);
         const isMcpEndpoint = req.url === '/mcp' || req.url.startsWith('/mcp?');
         
-        if (isMcpEndpoint) {
-            logger.info('🔐 MCP endpoint detected - forcing OAuth-only authentication');
-            // Skip header-based authentication check for MCP endpoint
-        } else {
-            // Check if required headers are present for header-based authentication
-            const hasHeaderAuth = this.hasRequiredHeaders(req);
-            
-            logger.info('Header authentication check', {
-                hasHeaderAuth,
-                headers: {
-                    'x-atlassian-email': !!req.headers['x-atlassian-email'],
-                    'x-jira-api-token': !!req.headers['x-jira-api-token'],
-                    'x-jira-project': !!req.headers['x-jira-project']
-                }
-            });
-            
-            if (hasHeaderAuth) {
-                // Headers are present, use header-based authentication
-                logger.info('✅ Using header-based authentication (headers provided)');
-                req.headers['oauth-authenticated'] = 'false'; // Mark as non-OAuth
-                return next();
+        logger.info('Header authentication check', {
+            hasHeaderAuth,
+            isMcpEndpoint,
+            headers: {
+                'x-atlassian-email': !!req.headers['x-atlassian-email'],
+                'x-jira-api-token': !!req.headers['x-jira-api-token'],
+                'x-jira-project': !!req.headers['x-jira-project']
             }
+        });
+        
+        if (hasHeaderAuth) {
+            // Headers are present, use header-based authentication
+            logger.info('✅ Using header-based authentication (headers provided)');
+            req.headers['oauth-authenticated'] = 'false'; // Mark as non-OAuth
+            return next();
         }
         
-        // No headers present, check if this is an OAuth authenticated request
+        // No headers present, fall back to OAuth authentication (default behavior)
         const sessionId = req.headers['mcp-session-id'] as string | undefined;
         const isInitialize = isInitializeRequest(req.body);
         
-        logger.info('❌ No headers provided, checking for OAuth authentication');
+        logger.info('🔐 No headers provided, using OAuth authentication (default)');
         
         const authHeader = req.headers.authorization;
         
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            // Allow MCP initialize requests to pass through without OAuth
-            // but require OAuth for all other requests
-            // EXCEPT for /mcp endpoint which must be OAuth-only (Claude.ai requirement)
+            // Allow non-MCP initialize requests to pass through without OAuth
+            // but require OAuth for all other requests (including MCP endpoints)
             if (isInitialize && !sessionId && !isMcpEndpoint) {
-                logger.info('✅ Allowing MCP initialize request without OAuth (will trigger OAuth flow later)');
+                logger.info('✅ Allowing non-MCP initialize request without OAuth (will trigger OAuth flow later)');
                 req.headers['oauth-authenticated'] = 'false'; // Mark as non-OAuth
                 return next();
             }
