@@ -34,23 +34,23 @@ export function registerAddTaskTool(server: McpServer, getSessionConfig?: () => 
                 .describe(
                     'The issue type for the issue (default: Task, Epic, Story, Bug, Subtask)'
                 ),
-            details: z
+            implementationDetails: z
                 .string()
                 .optional()
                 .describe(
-                    'Implementation details and technical specifications. FORMATTING GUIDE: Use markdown for structure - ## Implementation Steps, ### Database Schema, ```sql code```, **Important:** notes, - Step 1, - Step 2. This content will appear in a blue "Implementation Details" panel in Jira for clear separation from the main description.'
+                    'Implementation details and technical specifications. 🚨 CRITICAL: START DIRECTLY WITH CONTENT - NO TITLES OR HEADERS AT ALL. Jira automatically creates an "Implementation Details" panel title. ❌ WRONG: "**Implementation Steps:**" or "## Details:" or "### Steps:" ✅ CORRECT: "- Create the database schema" Use markdown for structure: **Important:** notes, - Step 1, - Step 2, ```sql code```. This content appears in a pre-titled panel in Jira.'
                 ),
             acceptanceCriteria: z
                 .string()
                 .optional()
                 .describe(
-                    'Acceptance criteria and requirements that must be met. FORMATTING GUIDE: Use markdown checklists - [ ] for incomplete items, **Must have:** for emphasis, ### Additional Requirements for sections. This content will appear in a green "Acceptance Criteria" panel in Jira to highlight completion requirements.'
+                    'Acceptance criteria and requirements that must be met. 🚨 CRITICAL: START DIRECTLY WITH CONTENT - NO TITLES OR HEADERS AT ALL. Jira automatically creates an "Acceptance Criteria" panel title. ❌ WRONG: "**Acceptance Criteria:**" or "## Requirements:" or "### Criteria:" ✅ CORRECT: "- [ ] User can log in successfully" Use markdown checklists: - [ ] for incomplete items, **Must have:** for emphasis. This content appears in a pre-titled panel in Jira.'
                 ),
             testStrategy: z
                 .string()
                 .optional()
                 .describe(
-                    'Testing approach and strategy. FORMATTING GUIDE: Use markdown structure - ## Unit Tests, ```bash test commands```, ### Performance Tests, **Target:** for goals, - Test case 1. This content will appear in a gray "Test Strategy (TDD)" panel in Jira for clear testing guidance.'
+                    'Testing approach and strategy. 🚨 CRITICAL: START DIRECTLY WITH CONTENT - NO TITLES OR HEADERS AT ALL. Jira automatically creates a "Test Strategy (TDD)" panel title. ❌ WRONG: "**Test Strategy:**" or "## Testing:" or "### Test Plan:" ✅ CORRECT: "Unit tests will cover all public methods" Use markdown structure: ```bash test commands```, **Target:** for goals, - Test case 1. This content appears in a pre-titled panel in Jira.'
                 ),
             parentKey: z
                 .string()
@@ -78,7 +78,7 @@ export function registerAddTaskTool(server: McpServer, getSessionConfig?: () => 
         title: string;
         description?: string;
         issueType?: string;
-        details?: string;
+        implementationDetails?: string;
         acceptanceCriteria?: string;
         testStrategy?: string;
         parentKey?: string;
@@ -107,7 +107,7 @@ export function registerAddTaskTool(server: McpServer, getSessionConfig?: () => 
             const jiraTicket = new JiraTicket({
                 title: args.title,
                 description: args.description,
-                details: args.details,
+                details: args.implementationDetails,
                 acceptanceCriteria: args.acceptanceCriteria,
                 testStrategy: args.testStrategy,
                 parentKey: args.parentKey,

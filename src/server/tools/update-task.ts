@@ -187,14 +187,23 @@ Analyze the instruction and return a JSON object containing only the fields that
             currentTicket.update(updatedFields);
             logger.info(`Updated ticket with LLM-provided field changes`);
 
+            // Build the update request with the appropriate fields
+            const updateFields: any = {
+                description: currentTicket.toADF()
+            };
+
+            // If the title was updated, also update the summary field in Jira
+            if (updatedFields.title) {
+                updateFields.summary = currentTicket.title;
+                logger.info(`Title updated - will update both summary and description fields`);
+            }
+
             // Update the issue using the JiraClient
             logger.info(`Updating Jira issue ${args.id} with field-specific changes`);
             const updateResult = await jiraClient.updateIssue(
                 args.id,
                 {
-                    fields: {
-                        description: currentTicket.toADF()
-                    }
+                    fields: updateFields
                 },
                 { log: logger }
             );
