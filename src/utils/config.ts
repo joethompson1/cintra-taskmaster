@@ -6,6 +6,7 @@ export interface SessionConfig {
     JIRA_PROJECT?: string;
     BITBUCKET_EMAIL?: string;
     BITBUCKET_API_TOKEN?: string;
+    IS_OAUTH?: boolean;
     [key: string]: any;
 }
 
@@ -55,7 +56,7 @@ export function useSessionConfigs(
 
     // Build Jira configuration
     const jiraConfig: JiraConfig = includeJira ? {
-        baseUrl: sessionConfig.JIRA_API_URL || process.env.JIRA_API_URL,
+        baseUrl: process.env.JIRA_API_URL, // Always use environment variable for security
         email: sessionConfig.JIRA_EMAIL,
         apiToken: sessionConfig.JIRA_API_TOKEN,
         project: sessionConfig.JIRA_PROJECT,
@@ -64,7 +65,7 @@ export function useSessionConfigs(
 
     // Build Bitbucket configuration
     const bitbucketConfig: BitbucketConfig = includeBitbucket ? {
-        workspace: process.env.BITBUCKET_WORKSPACE,
+        workspace: process.env.BITBUCKET_WORKSPACE, // Always use environment variable for security
         username: sessionConfig.BITBUCKET_EMAIL,
         apiToken: sessionConfig.BITBUCKET_API_TOKEN,
     } : {};
