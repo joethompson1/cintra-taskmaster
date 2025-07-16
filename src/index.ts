@@ -69,13 +69,18 @@ function extractCredentials(req: Request) {
 		// OAuth authentication - use OAuth token for Jira API
 		const oauthToken = req.headers['x-oauth-token'] as string;
 		const cloudId = req.headers['x-cloud-id'] as string;
+		const email = req.headers['x-atlassian-email'] as string;
+		const project = req.headers['x-jira-project'] as string;
 		
 		logger.info('✅ Using OAuth authentication for session credentials');
 		
 		const credentials = {
 			JIRA_API_URL: cloudId ? `https://api.atlassian.com/ex/jira/${cloudId}` : process.env.JIRA_API_URL,
+			JIRA_EMAIL: email, // OAuth user's email from JWT token
 			JIRA_API_TOKEN: oauthToken, // Use OAuth token as API token
+			JIRA_PROJECT: project, // OAuth user's project from JWT token
 			BITBUCKET_WORKSPACE: process.env.BITBUCKET_WORKSPACE,
+			BITBUCKET_EMAIL: email, // Use same email for Bitbucket
 			BITBUCKET_API_TOKEN: oauthToken, // Use same OAuth token for Bitbucket
 			IS_OAUTH: true, // Flag to indicate OAuth authentication
 		};
@@ -83,7 +88,11 @@ function extractCredentials(req: Request) {
 		logger.info('🔍 OAuth credentials extracted:', {
 			hasJiraApiUrl: !!credentials.JIRA_API_URL,
 			hasJiraToken: !!credentials.JIRA_API_TOKEN,
+			hasJiraEmail: !!credentials.JIRA_EMAIL,
+			hasJiraProject: !!credentials.JIRA_PROJECT,
 			jiraApiUrl: credentials.JIRA_API_URL,
+			jiraEmail: credentials.JIRA_EMAIL,
+			jiraProject: credentials.JIRA_PROJECT,
 			isOAuth: credentials.IS_OAUTH
 		});
 		

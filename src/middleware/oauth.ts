@@ -271,13 +271,23 @@ export class AtlassianOAuthMiddleware {
             req.headers['x-oauth-token'] = tokenData.atlassianAccessToken;
             req.headers['x-cloud-id'] = tokenData.cloudId;
             req.headers['oauth-authenticated'] = 'true';
+            
+            // Add email and project from JWT token if available
+            if (tokenData.email) {
+                req.headers['x-atlassian-email'] = tokenData.email;
+            }
+            if (tokenData.jiraProject) {
+                req.headers['x-jira-project'] = tokenData.jiraProject;
+            }
 
             logger.info('✅ OAuth headers set successfully', {
                 hasEmail: !!req.headers['x-atlassian-email'],
                 hasToken: !!req.headers['x-oauth-token'],
                 hasCloudId: !!req.headers['x-cloud-id'],
                 hasProject: !!req.headers['x-jira-project'],
-                isOAuthAuthenticated: req.headers['oauth-authenticated'] === 'true'
+                isOAuthAuthenticated: req.headers['oauth-authenticated'] === 'true',
+                email: tokenData.email ? `${tokenData.email}` : 'not provided',
+                project: tokenData.jiraProject ? `${tokenData.jiraProject}` : 'not provided'
             });
 
             next();

@@ -32,11 +32,18 @@ export function registerNextTaskTool(server: McpServer, getSessionConfig?: () =>
                 .describe(
                     'Optional assignee email to filter tasks assigned to a specific user. If not provided, returns tasks assigned to anyone'
                 ),
+            assignedToMe: z
+                .boolean()
+                .optional()
+                .describe(
+                    'If true, automatically filters tasks assigned to the current authenticated user. Works for both OAuth and header-based authentication. Takes precedence over assigneeEmail if both are provided.'
+                ),
         },
     }, async (args: {
         parentKey: string;
         projectKey: string;
         assigneeEmail?: string;
+        assignedToMe?: boolean;
     }) => {
         try {
             // Get configurations using the shared config hook
@@ -45,7 +52,31 @@ export function registerNextTaskTool(server: McpServer, getSessionConfig?: () =>
             // Check if parentKey is 'all' and set to empty string to fetch all tasks
             const parentKey = args.parentKey === 'all' ? '' : args.parentKey;
 
-            logger.info(`Finding next task with args: ${JSON.stringify(args)}`);
+            // Handle assignedToMe parameter - extract current user's email if needed
+            let finalAssigneeEmail = args.assigneeEmail;
+            
+            if (args.assignedToMe) {
+                // Get current user's email from session config
+                if (getSessionConfig) {
+                    const sessionConfig = getSessionConfig();
+                    const currentUserEmail = sessionConfig.JIRA_EMAIL;
+                    
+                    if (currentUserEmail) {
+                        finalAssigneeEmail = currentUserEmail;
+                        const authType = sessionConfig.IS_OAUTH ? 'OAuth' : 'header-based';
+                        logger.info(`🎯 Using assignedToMe=true with ${authType} authentication: ${currentUserEmail}`);
+                    } else {
+                        logger.warn('⚠️  assignedToMe=true but no email found in session config, will search all tasks');
+                    }
+                } else {
+                    logger.warn('⚠️  assignedToMe=true but no session config available, will search all tasks');
+                }
+            }
+
+            logger.info(`Finding next task with args: ${JSON.stringify({
+                ...args,
+                resolvedAssigneeEmail: finalAssigneeEmail
+            })}`);
 
             // Call the findNextJiraTask function with parentKey and optional filters
             const result = await findNextJiraTask(
@@ -54,7 +85,7 @@ export function registerNextTaskTool(server: McpServer, getSessionConfig?: () =>
                 {
                     jiraConfig,
                     projectKey: args.projectKey,
-                    assigneeEmail: args.assigneeEmail
+                    assigneeEmail: finalAssigneeEmail
                 }
             );
 
@@ -65,12 +96,14 @@ export function registerNextTaskTool(server: McpServer, getSessionConfig?: () =>
 
             // If no next task found
             if (!result.data?.nextTask) {
-                logger.info('No eligible next task found. All tasks are either completed or have unsatisfied dependencies');
+                const assigneeInfo = finalAssigneeEmail ? ` assigned to ${finalAssigneeEmail}` : '';
+                const message = `No eligible next task found${assigneeInfo}. All tasks are either completed or have unsatisfied dependencies`;
+                logger.info(message);
                 return {
                     content: [
                         {
                             type: 'text' as const,
-                            text: 'No eligible next task found. All tasks are either completed or have unsatisfied dependencies'
+                            text: message
                         }
                     ]
                 };
