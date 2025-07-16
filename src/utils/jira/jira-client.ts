@@ -455,8 +455,9 @@ export class JiraClient {
      * @param options - Additional options
      * @returns Result with success status and created issue data/error
      */
-    async createIssue(issueData: JiraTicket, options: CreateOptions = {}): Promise<JiraResponse<any>> {
+    async createIssue(issueData: JiraTicket, options: CreateOptions & { projectKey?: string } = {}): Promise<JiraResponse<any>> {
         const log = options.log || defaultLogger;
+        const projectKey = options.projectKey;
 
         try {
             if (!this.isReady()) {
@@ -471,7 +472,7 @@ export class JiraClient {
             const client = this.getClient();
             const response: AxiosResponse<any> = await client.post(
                 '/rest/api/3/issue',
-                issueData.toJiraRequestData()
+                issueData.toJiraRequestData(projectKey)
             );
 
             if (!response.data) {

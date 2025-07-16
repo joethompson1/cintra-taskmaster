@@ -21,9 +21,22 @@ export function registerNextTaskTool(server: McpServer, getSessionConfig?: () =>
                 .describe(
                     'Parent Jira issue key (epic or task with subtasks) to filter tasks by, if no parent key is provided, pass in "all" as the parameter'
                 ),
+            projectKey: z
+                .string()
+                .describe(
+                    'The project key to filter tasks by (e.g., "JAR", "PROJ"). Required so it knows which project to look in'
+                ),
+            assigneeEmail: z
+                .string()
+                .optional()
+                .describe(
+                    'Optional assignee email to filter tasks assigned to a specific user. If not provided, returns tasks assigned to anyone'
+                ),
         },
     }, async (args: {
         parentKey: string;
+        projectKey: string;
+        assigneeEmail?: string;
     }) => {
         try {
             // Get configurations using the shared config hook
@@ -34,12 +47,14 @@ export function registerNextTaskTool(server: McpServer, getSessionConfig?: () =>
 
             logger.info(`Finding next task with args: ${JSON.stringify(args)}`);
 
-            // Call the findNextJiraTask function with parentKey
+            // Call the findNextJiraTask function with parentKey and optional filters
             const result = await findNextJiraTask(
                 parentKey,
                 logger,
                 {
-                    jiraConfig
+                    jiraConfig,
+                    projectKey: args.projectKey,
+                    assigneeEmail: args.assigneeEmail
                 }
             );
 

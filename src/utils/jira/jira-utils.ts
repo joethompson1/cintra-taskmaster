@@ -801,11 +801,11 @@ export async function fetchTasksFromJira(parentKey: string | null, withSubtasks:
 /**
  * Create a Jira issue using the JiraTicket class
  * @param {JiraTicket} jiraTicket - JiraTicket instance with all the data
- * @param {Object} log - Logger object
+ * @param {Object} options - Options object containing jiraConfig, log, and optional projectKey
  * @returns {Promise<Object>} Result object with success status and data/error
  */
-export async function createJiraIssue(jiraTicket: any, options: FetchOptions = {}): Promise<any> {
-	const { jiraConfig, log } = options;
+export async function createJiraIssue(jiraTicket: any, options: FetchOptions & { projectKey?: string } = {}): Promise<any> {
+	const { jiraConfig, log, projectKey } = options;
 
 	try {
 
@@ -839,6 +839,51 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions = {
 				error: {
 					code: 'MISSING_PARAMETER',
 					message: 'Summary/title is required'
+				}
+			};
+		}
+
+		// Validate project key parameter
+		if (!projectKey) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_PROJECT_KEY',
+					message: 'Project key is required but not provided. Please specify the projectKey parameter (e.g., "JAR", "PROJ").',
+					field: 'projectKey',
+					suggestion: 'Add the projectKey parameter to your request with a valid Jira project key'
+				}
+			};
+		}
+
+		// Validate project key exists and is accessible
+		try {
+			const client = jiraClient.getClient();
+			await client.get(`/rest/api/3/project/${projectKey}`);
+			log.info(`✓ Project key ${projectKey} validated`);
+		} catch (projectError: unknown) {
+			const isAxiosError = projectError && typeof projectError === 'object' && 'response' in projectError;
+			const status = isAxiosError ? (projectError as any).response?.status : null;
+			
+			let errorMessage = `Project key '${projectKey}' is not valid or accessible`;
+			let suggestion = 'Please verify the project key exists and you have access to it';
+			
+			if (status === 404) {
+				errorMessage = `Project '${projectKey}' does not exist or you don't have access to it`;
+				suggestion = 'Check the project key spelling and ensure you have permission to access this project';
+			} else if (status === 403) {
+				errorMessage = `You don't have permission to access project '${projectKey}'`;
+				suggestion = 'Contact your Jira administrator to get access to this project';
+			}
+			
+			return {
+				success: false,
+				error: {
+					code: 'INVALID_PROJECT_KEY',
+					message: errorMessage,
+					field: 'projectKey',
+					value: projectKey,
+					suggestion: suggestion
 				}
 			};
 		}
@@ -882,7 +927,7 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions = {
 		}
 
 		// Generate request payload for debugging
-		const requestPayload = jiraTicket.toJiraRequestData();
+		const requestPayload = jiraTicket.toJiraRequestData(projectKey);
 		
 		// Log request details for debugging (without sensitive data)
 		log.info(`Creating ${jiraTicket.issueType} with fields: ${Object.keys(requestPayload.fields).join(', ')}`);
@@ -921,6 +966,14 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions = {
 			
 			// Check for specific field errors and provide helpful messages
 			const fieldErrors = [];
+			
+			if (specificErrors.project) {
+				fieldErrors.push({
+					field: 'project',
+					error: specificErrors.project,
+					suggestion: 'The project key may not be valid or you may not have permission to create issues in this project. Check the project key and your permissions.'
+				});
+			}
 			
 			if (specificErrors.priority) {
 				fieldErrors.push({
@@ -1037,31 +1090,32 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions = {
 			enhancedMessage = `Jira API validation failed (${error.response?.status || 'Unknown'})\n- ${fieldErrorDetails}`;
 		}
 
-		// Debug: Log the full error object to see what's available
-		const errorDetails = {
-			message: error.message,
-			name: error.name,
-			status: error.response?.status,
-			statusText: error.response?.statusText,
-			data: error.response?.data || {},
-			errorMessages: errorMessages,
-			errors: specificErrors,
-			fieldErrors: fieldErrors,
-			requestPayload: jiraTicket.toJiraRequestData(), // Include request payload for debugging
-			headers: error.response?.headers
-				? Object.keys(error.response.headers)
-				: [],
-			config: error.config
-				? {
-						url: error.config.url,
-						method: error.config.method,
-						baseURL: error.config.baseURL,
-						headers: Object.keys(error.config.headers || {})
-					}
-				: {},
-			isAxiosError: error.isAxiosError || false,
-			code: error.code || 'NO_CODE'
-		};
+					// Debug: Log the full error object to see what's available
+			const debugProjectKey = projectKey;
+			const errorDetails = {
+				message: error.message,
+				name: error.name,
+				status: error.response?.status,
+				statusText: error.response?.statusText,
+				data: error.response?.data || {},
+				errorMessages: errorMessages,
+				errors: specificErrors,
+				fieldErrors: fieldErrors,
+				requestPayload: jiraTicket.toJiraRequestData(debugProjectKey), // Include request payload for debugging
+				headers: error.response?.headers
+					? Object.keys(error.response.headers)
+					: [],
+				config: error.config
+					? {
+							url: error.config.url,
+							method: error.config.method,
+							baseURL: error.config.baseURL,
+							headers: Object.keys(error.config.headers || {})
+						}
+					: {},
+				isAxiosError: error.isAxiosError || false,
+				code: error.code || 'NO_CODE'
+			};
 
 		// Return structured error response with enhanced information
 		return {
@@ -1087,6 +1141,8 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions = {
  */
 function getFieldErrorSuggestion(field: string, message: string, jiraTicket: any): string {
 	switch (field) {
+		case 'project':
+			return 'The project key may not be valid or you may not have permission to create issues in this project. Check the project key and your permissions.';
 		case 'priority':
 			return 'The priority field may not be available on your Jira screen configuration. Try without priority or contact your Jira admin.';
 		case 'parent':
@@ -1200,15 +1256,18 @@ export async function setJiraTaskStatus(taskId: string, newStatus: string, optio
  * Find the next pending task based on dependencies from Jira
  * @param {string} [parentKey] - Optional parent/epic key to filter tasks
  * @param {Object} log - Logger object
+ * @param {Object} options - Options object
+ * @param {string} [options.projectKey] - Optional project key to filter tasks (defaults to config project)
+ * @param {string} [options.assigneeEmail] - Optional assignee email to filter tasks assigned to specific user
  * @returns {Promise<Object>} The next task to work on and all retrieved tasks
  */
 export async function findNextJiraTask(
 	parentKey: string,
 	log: Logger,
-	options: FetchOptions = {}
+	options: FetchOptions & { projectKey?: string; assigneeEmail?: string } = {}
 ): Promise<any> {
 	try {
-		const { jiraConfig } = options;
+		const { jiraConfig, projectKey, assigneeEmail } = options;
 
 		// Check if Jira is enabled using the JiraClient
 		const jiraClient = new JiraClient(jiraConfig);
@@ -1223,23 +1282,67 @@ export async function findNextJiraTask(
 			};
 		}
 
+		// Use provided project key or default to config project
+		const targetProject = projectKey;
+
 		// Array to store all tasks retrieved from Jira
 		let allTasks = [];
 
 		if (parentKey) {
-			log.info(`Finding next task for parent/epic: ${parentKey}`);
+			log.info(`Finding next task for parent/epic: ${parentKey}${targetProject ? ` in project ${targetProject}` : ''}${assigneeEmail ? ` assigned to ${assigneeEmail}` : ''}`);
 		} else {
-			log.info('No parent key provided, fetching all workable tasks');
+			log.info(`Finding next task from all workable tasks${targetProject ? ` in project ${targetProject}` : ''}${assigneeEmail ? ` assigned to ${assigneeEmail}` : ''}`);
 		}
 
-		// Get tasks using fetchTasksFromJira - whether filtering by parent or getting all tasks
-		const result = await fetchTasksFromJira(parentKey, true, log);
-		if (result && result.tasks) {
-			allTasks = result.tasks;
-			log.info(
-				`Found ${allTasks.length} tasks ${parentKey ? `for parent ${parentKey}` : 'in total'}`
-			);
+		// Always use custom JQL query to ensure proper filtering (including epic exclusion)
+		// Build custom JQL query with filters
+		let jqlParts = [];
+		
+		// Add project filter
+		if (targetProject) {
+			jqlParts.push(`project = "${targetProject}"`);
 		}
+		
+		// Add assignee filter if provided
+		if (assigneeEmail) {
+			jqlParts.push(`assignee = "${assigneeEmail}"`);
+		}
+		
+		// Add parent filter if provided
+		if (parentKey) {
+			jqlParts.push(`parent = "${parentKey}"`);
+		}
+		
+		// Always exclude epics from next task suggestions - epics are containers, not workable tasks
+		jqlParts.push(`issuetype != "Epic"`);
+		
+		// Build final JQL
+		const jql = jqlParts.join(' AND ') + ' ORDER BY created ASC';
+		
+		log.info(`Using JQL query: ${jql}`);
+		
+		// Use the searchIssues method to get filtered results
+		const searchResult = await jiraClient.searchIssues(jql, {
+			maxResults: 100,
+			expand: 'true',
+			log
+		});
+
+		if (!searchResult.success) {
+			return searchResult;
+		}
+
+		// Convert JiraTicket objects to Task Master format
+		allTasks = await Promise.all(
+			searchResult.data.map(async (jiraTicket) => {
+				const task = jiraTicket.toTaskMasterFormat();
+				return task;
+			})
+		);
+
+		log.info(
+			`Found ${allTasks.length} tasks ${parentKey ? `for parent ${parentKey}` : 'in total'}`
+		);
 
 		if (allTasks.length === 0) {
 			log.info('No tasks found');
@@ -1265,7 +1368,13 @@ export async function findNextJiraTask(
 				// Exclude in-review tasks as they're waiting for review feedback
 				const isWorkableStatus = ['pending', 'to-do', 'in-progress'].includes(task.status);
 				
-				return isWorkableStatus && (
+				// Exclude epics - they are containers for tasks, not workable tasks themselves
+				const isNotEpic = task.issueType !== 'Epic';
+				
+				// Filter by assignee if provided
+				const assigneeMatches = !assigneeEmail || task.assignee === assigneeEmail;
+				
+				return isWorkableStatus && isNotEpic && assigneeMatches && (
 					!task.dependencies || // No dependencies, or
 					task.dependencies.length === 0 || // Empty dependencies array, or
 					task.dependencies.every((depId: any) => completedTaskIds.has(depId)) // All dependencies completed
@@ -1274,8 +1383,9 @@ export async function findNextJiraTask(
 		);
 
 		if (eligibleTasks.length === 0) {
+			const filterInfo = assigneeEmail ? ` assigned to ${assigneeEmail}` : '';
 			log.info(
-				'No eligible tasks found - all tasks are either completed, blocked, in review, or have unsatisfied dependencies'
+				`No eligible tasks found${filterInfo} - all tasks are either completed, blocked, in review, epics, or have unsatisfied dependencies`
 			);
 			return {
 				success: true,
@@ -1807,6 +1917,9 @@ export async function expandJiraTask(
 		const createdSubtasks = [];
 		const issueKeyMap = new Map(); // Map subtask ID to Jira issue key for dependency linking
 
+		// Extract project from parent task ID (e.g., "JAR-123" -> "JAR")
+		const projectKey = taskId.split('-')[0];
+
 		for (let i = 0; i < generatedSubtasks.length; i++) {
 			const subtask = generatedSubtasks[i];
 
@@ -1827,7 +1940,7 @@ export async function expandJiraTask(
 				log?.info(
 					`Creating subtask ${i + 1}/${generatedSubtasks.length}: ${subtask.title}`
 				);
-				const createResult = await createJiraIssue(jiraTicket, { jiraConfig, log });
+				const createResult = await createJiraIssue(jiraTicket, { jiraConfig, log, projectKey });
 
 				if (createResult.success) {
 					const jiraKey = createResult.data.key;
@@ -2040,8 +2153,11 @@ export async function removeJiraSubtask(subtaskId: string, convert: boolean = fa
 					parentKey: epicKey || undefined
 				});
 
+				// Extract project from subtask ID (e.g., "JAR-123" -> "JAR")
+				const projectKey = subtaskId.split('-')[0];
+
 				// Use the JiraClient's createIssue method instead of direct API call
-				const createResult = await jiraClient.createIssue(taskTicket, { log });
+				const createResult = await jiraClient.createIssue(taskTicket, { log, projectKey });
 
 				if (!createResult.success) {
 					return createResult;

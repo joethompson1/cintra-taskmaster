@@ -69,7 +69,10 @@ export function registerAddTaskTool(server: McpServer, getSessionConfig?: () => 
             labels: z
                 .array(z.string())
                 .optional()
-                .describe('List of labels to add'),
+                .describe('List of labels to add, only add labels if specified'),
+            projectKey: z
+                .string()
+                .describe('The Jira project key to create the issue in (e.g., "JAR", "PROJ"). This parameter is required.'),
         },
     }, async (args: {
         title: string;
@@ -82,6 +85,7 @@ export function registerAddTaskTool(server: McpServer, getSessionConfig?: () => 
         priority?: string;
         assignee?: string;
         labels?: string[];
+        projectKey: string;
     }) => {
         try {
             // Get configurations using the shared config hook
@@ -118,12 +122,30 @@ export function registerAddTaskTool(server: McpServer, getSessionConfig?: () => 
             // Call the createJiraIssue function
             const result = await createJiraIssue(jiraTicket, {
                 jiraConfig,
-                log: logger  // Pass logger in options object
+                log: logger,  // Pass logger in options object
+                projectKey: args.projectKey  // This can be undefined, handled by createJiraIssue
             });
 
             if (!result.success) {
-                logger.error(`Failed to create Jira issue: ${result.error?.message || 'Unknown error'}`);
-                return createErrorResponse(`Failed to create Jira issue: ${result.error?.message || 'Unknown error'}`);
+                const error = result.error;
+                logger.error(`Failed to create Jira issue: ${error?.message || 'Unknown error'}`);
+                
+                // Enhanced error message with field-specific suggestions
+                let errorMessage = `Failed to create Jira issue: ${error?.message || 'Unknown error'}`;
+                
+                // Add suggestions if available
+                if (error?.suggestions && error.suggestions.length > 0) {
+                    errorMessage += '\n\nSuggestions:\n' + error.suggestions.map((s: string) => `- ${s}`).join('\n');
+                }
+                
+                // Add field-specific help for common issues
+                if (error?.code === 'MISSING_PROJECT_KEY') {
+                    errorMessage += '\n\nTip: Make sure to specify the projectKey parameter when creating an issue.';
+                } else if (error?.code === 'INVALID_PROJECT_KEY') {
+                    errorMessage += '\n\nTip: Verify the project key exists and you have access to it.';
+                }
+                
+                return createErrorResponse(errorMessage);
             }
 
             // Success response

@@ -665,12 +665,13 @@ export class JiraTicket {
 
     /**
      * Convert to Jira API request format
+     * @param projectKey - The Jira project key to create the issue in
      * @returns Jira create/update request data
      */
-    toJiraRequestData(): JiraCreateIssueRequest {
+    toJiraRequestData(projectKey?: string): JiraCreateIssueRequest {
         const fields: any = {
             project: {
-                key: process.env.JIRA_PROJECT || 'PROJ'
+                key: projectKey
             },
             summary: this.title,
             description: this.toADF(),
