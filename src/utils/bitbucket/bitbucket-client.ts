@@ -86,12 +86,7 @@ export class BitbucketClient {
 	 * @param config - Optional Bitbucket configuration to override environment variables
 	 */
 	constructor(config?: Partial<BitbucketConfig>) {
-		// Always use environment variable for workspace for security reasons
-		// This prevents external OAuth users from changing the Bitbucket workspace
-		this.config = {
-			...config,
-			workspace: process.env.BITBUCKET_WORKSPACE
-		} as BitbucketConfig;
+		this.config = config as BitbucketConfig;
 		
 		// Check if configuration has all required fields
 		this.enabled = !!(this.config.workspace && this.config.username && this.config.apiToken);
@@ -110,14 +105,12 @@ export class BitbucketClient {
 
 	/**
 	 * Create an authenticated Axios instance for Bitbucket API requests
-	 * @param config - Bitbucket configuration (workspace is always from environment variable)
+	 * @param config - Bitbucket configuration
 	 * @returns Axios instance configured for Bitbucket
 	 */
 	createClient(config: BitbucketConfig): AxiosInstance {
 		const { username, apiToken } = config;
 
-		// Security: workspace is always from BITBUCKET_WORKSPACE environment variable
-		// This prevents external OAuth users from changing the Bitbucket workspace
 		if (!username || !apiToken) {
 			throw new Error(
 				'Missing required Bitbucket API configuration. Please set BITBUCKET_EMAIL and BITBUCKET_API_TOKEN environment variables.'

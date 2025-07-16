@@ -56,12 +56,7 @@ export class JiraClient {
      * @param config - Optional Jira configuration to override environment variables
      */
     constructor(config?: Partial<JiraConfig>) {
-        // Always use environment variable for baseUrl for security reasons
-        // This prevents external OAuth users from changing the Jira instance URL
-        this.config = {
-            ...config,
-            baseUrl: process.env.JIRA_API_URL
-        } as JiraConfig;
+        this.config = config ? config as JiraConfig : JiraClient.getJiraConfig();
         
         // Check if this is OAuth authentication (no email required)
         const isOAuth = (config as any)?.isOAuth || false;
@@ -88,16 +83,29 @@ export class JiraClient {
     }
 
     /**
+     * Get Jira API configuration from environment variables or CONFIG
+     * @returns Jira API configuration
+     */
+    static getJiraConfig(): JiraConfig {
+        return {
+            baseUrl: process.env.JIRA_API_URL || '',
+            email: process.env.JIRA_EMAIL || '',
+            apiToken: process.env.JIRA_API_TOKEN || '',
+            project: process.env.JIRA_PROJECT || ''
+        };
+    }
+
+
+
+    /**
      * Create an authenticated Axios instance for Jira API requests
-     * @param config - Jira configuration (baseUrl is always from environment variable)
+     * @param config - Jira configuration
      * @param isOAuth - Whether this is OAuth authentication
      * @returns Axios instance configured for Jira
      */
     createJiraClient(config: JiraConfig, isOAuth: boolean = false): AxiosInstance {
         const { baseUrl, email, apiToken } = config;
 
-        // Security: baseUrl is always from JIRA_API_URL environment variable
-        // This prevents external OAuth users from changing the Jira instance URL
         if (!baseUrl || !apiToken) {
             throw new Error(
                 'Missing required Jira API configuration. Please set JIRA_API_URL and JIRA_API_TOKEN environment variables.'
