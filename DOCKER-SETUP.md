@@ -1,11 +1,10 @@
 # Docker Setup Guide for Cintra-Taskmaster
 
-This guide will help you dockerize and run the cintra-taskmaster MCP server using Docker and Docker Compose.
+This guide will help you dockerize and run the cintra-taskmaster MCP server using Docker.
 
 ## Prerequisites
 
 - Docker (version 20.10 or higher)
-- Docker Compose (version 2.0 or higher)
 - Your Atlassian (Jira/Bitbucket) credentials
 
 ## Quick Start
@@ -26,9 +25,7 @@ This guide will help you dockerize and run the cintra-taskmaster MCP server usin
    ```
 
 3. **Build and Deploy**
-   ```bash
-   docker-compose up --build
-   ```
+   build from Dockerfile
 
 4. **Access the Server**
    - MCP Server: http://localhost:3000/mcp
@@ -85,21 +82,6 @@ curl -X POST http://localhost:3000/mcp \
 
 ## Docker Commands
 
-### Development Mode
-```bash
-# Run in development with auto-restart
-docker-compose up --build
-
-# Run in background
-docker-compose up -d
-
-# View logs
-docker-compose logs -f cintra-taskmaster
-
-# Stop services
-docker-compose down
-```
-
 ## Build Only Docker Image
 
 If you prefer to build just the Docker image:
@@ -130,10 +112,6 @@ docker run -d \
 
 The application includes health checks:
 
-```bash
-# Check container health
-docker-compose ps
-
 # Manual health check
 curl http://localhost:3000/health
 ```
@@ -159,67 +137,6 @@ tail -f logs/app.log
 # View error logs
 tail -f logs/error.log
 
-# View logs in Docker
-docker-compose logs -f cintra-taskmaster
-```
-
-## Security Features
-
-- **Non-root user**: Container runs as `mcpuser` (UID 1001)
-- **Read-only filesystem**: Application code is read-only
-- **No sensitive data in environment**: User credentials via headers only
-- **Proper signal handling**: Uses `dumb-init` for clean shutdowns
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Build fails on native dependencies**
-   ```bash
-   # Clear node_modules and rebuild
-   docker-compose down
-   docker-compose build --no-cache
-   ```
-
-2. **Health check fails**
-   ```bash
-   # Check if service is running
-   docker-compose ps
-   
-   # Check logs for errors
-   docker-compose logs cintra-taskmaster
-   ```
-
-3. **Permission errors with logs**
-   ```bash
-   # Fix log directory permissions
-   sudo chmod 755 logs/
-   sudo chown -R 1001:1001 logs/
-   ```
-
-### Debug Mode
-
-Run with debug logging:
-
-```bash
-# Enable debug logging
-docker-compose up -e LOG_LEVEL=debug
-```
-
-## Testing
-
-Run the E2E tests against the Docker container:
-
-```bash
-# Start the container
-docker-compose up -d
-
-# Run tests (from host)
-npm run test:e2e
-
-# Cleanup
-docker-compose down
-```
 
 ## Monitoring
 
@@ -235,18 +152,3 @@ docker system df
 # Check container health
 docker inspect cintra-taskmaster | jq '.[0].State.Health'
 ```
-
-## Backup and Recovery
-
-Since this is a stateless application:
-
-1. **Configuration backup**: Save your `.env` file
-2. **Log backup**: Archive the `./logs` directory
-3. **No database**: No persistent data to backup
-
-## Need Help?
-
-- Check the main README.md for API documentation
-- Review application logs in `./logs/`
-- Run health checks: `curl localhost:3000/health`
-- Check the E2E tests for usage examples 

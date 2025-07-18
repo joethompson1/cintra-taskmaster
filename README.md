@@ -330,3 +330,6 @@ MIT License - see LICENSE file for details.
 - [Atlassian OAuth 2.0 Documentation](https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/)
 - [Jira REST API Documentation](https://developer.atlassian.com/cloud/jira/platform/rest/v3/)
 - [Bitbucket REST API Documentation](https://developer.atlassian.com/cloud/bitbucket/rest/)
+
+
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=cintra-taskmaster&config=JTdCJTIydXJsJTIyJTNBJTIyaHR0cHMlM0ElMkYlMkZjaW50cmEtdGFza21hc3Rlci0yMjQ4NjMyMDM4OTAuZXVyb3BlLXdlc3QxLnJ1bi5hcHAlMkZtY3AlMjIlMkMlMjJoZWFkZXJzJTIyJTNBJTdCJTIyeC1hdGxhc3NpYW4tZW1haWwlMjIlM0ElMjIlMjIlMkMlMjJ4LWppcmEtYXBpLXRva2VuJTIyJTNBJTIyJTIyJTJDJTIyeC1qaXJhLXByb2plY3QlMjIlM0ElMjIlMjIlMkMlMjJ4LWJpdGJ1Y2tldC1hcGktdG9rZW4lMjIlM0ElMjIlMjIlN0QlN0Q%3D)

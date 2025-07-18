@@ -102,8 +102,6 @@ function validateOAuthConfig() {
     
     if (isValid) {
         console.log('\n✅ OAuth configuration is valid!');
-        console.log('\n🚀 You can now deploy your MCP server with OAuth support.');
-        console.log('\nTo deploy: docker-compose up --build');
     } else {
         console.log('\n❌ OAuth configuration is invalid!');
         console.log('\n🔧 Please fix the errors above before deploying.');

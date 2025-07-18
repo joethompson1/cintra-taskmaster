@@ -62,8 +62,8 @@ export function createMCPOAuthRouter(): Router {
      * Returns pre-configured client credentials for the MCP Inspector
      */
     router.post('/auth/register', (req: Request, res: Response) => {
-        const clientId = process.env.ATLASSIAN_CLIENT_ID || process.env.MCP_CLIENT_ID;
-        const clientSecret = process.env.ATLASSIAN_CLIENT_SECRET || process.env.MCP_CLIENT_SECRET;
+        const clientId = process.env.MCP_CLIENT_ID || process.env.ATLASSIAN_CLIENT_ID;
+        const clientSecret = process.env.MCP_CLIENT_SECRET || process.env.ATLASSIAN_CLIENT_SECRET;
         
         if (!clientId || !clientSecret) {
             return res.status(500).json({
