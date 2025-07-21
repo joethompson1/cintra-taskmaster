@@ -275,13 +275,22 @@ export class JiraTicket {
 
         const flushParagraph = () => {
             if (currentParagraph.length > 0) {
-                const paragraphText = currentParagraph.join('\n').trim();
+                // Join lines with spaces instead of newlines to avoid embedded \n in ADF
+                const paragraphText = currentParagraph.join(' ').trim();
                 if (paragraphText) {
                     const content = this._parseInlineFormatting(paragraphText);
-                    if (content.length > 0) {
+                    // Handle both string and array returns from _parseInlineFormatting
+                    let contentArray: ADFNode[];
+                    if (typeof content === 'string') {
+                        contentArray = [{ type: 'text', text: content }];
+                    } else {
+                        contentArray = content;
+                    }
+                    
+                    if (contentArray.length > 0) {
                         nodes.push({
                             type: 'paragraph',
-                            content
+                            content: contentArray
                         });
                     }
                 }
@@ -404,8 +413,21 @@ export class JiraTicket {
                 continue;
             }
 
+            // CRITICAL FIX: Treat lines that start with bold/italic formatting as separate paragraphs
+            // This prevents embedded newlines in ADF text nodes that break Jira rendering
+            const startsWithBoldOrItalic = line.trim().match(/^\*\*[^*]*\*\*|^\*[^*]*\*/);
+            if (startsWithBoldOrItalic && currentParagraph.length > 0) {
+                // Flush current paragraph before starting a new one for formatted content
+                flushParagraph();
+            }
+
             // Regular paragraph content
             currentParagraph.push(line);
+            
+            // If this line starts with bold/italic formatting, treat it as a complete paragraph
+            if (startsWithBoldOrItalic) {
+                flushParagraph();
+            }
         }
 
         // Flush any remaining content
@@ -517,8 +539,8 @@ export class JiraTicket {
             return result;
         }
 
-        // Handle bold text
-        const boldMatch = text.match(/^(.*?)\*\*([^*]+)\*\*(.*)$/);
+        // Handle bold text - Fixed to properly handle multiple instances
+        const boldMatch = text.match(/^(.*?)\*\*([^*\n]+)\*\*(.*)$/s);
         if (boldMatch) {
             const before = boldMatch[1];
             const boldText = boldMatch[2];
@@ -541,6 +563,7 @@ export class JiraTicket {
                 marks: [{ type: 'strong' }]
             });
             
+            // CRITICAL FIX: Always recursively process the remaining text after a match
             if (after) {
                 const afterProcessed = this._processInlineFormatting(after);
                 if (typeof afterProcessed === 'string') {
@@ -553,8 +576,8 @@ export class JiraTicket {
             return result;
         }
 
-        // Handle italic text
-        const italicMatch = text.match(/^(.*?)\*([^*]+)\*(.*)$/);
+        // Handle italic text - Fixed to properly handle multiple instances  
+        const italicMatch = text.match(/^(.*?)\*([^*\n]+)\*(.*)$/s);
         if (italicMatch) {
             const before = italicMatch[1];
             const italicText = italicMatch[2];
@@ -577,6 +600,7 @@ export class JiraTicket {
                 marks: [{ type: 'em' }]
             });
             
+            // CRITICAL FIX: Always recursively process the remaining text after a match
             if (after) {
                 const afterProcessed = this._processInlineFormatting(after);
                 if (typeof afterProcessed === 'string') {

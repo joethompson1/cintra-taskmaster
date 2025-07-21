@@ -680,4 +680,151 @@ describe('ADF to Markdown Conversion', () => {
             expect(markdown).toContain('**Database**: PostgreSQL for user data');
         });
     });
+
+    describe('Markdown to ADF Conversion', () => {
+        test('should convert multiple bold elements in the same paragraph', () => {
+            const markdownText = '**Purpose:** Testing ticket creation with minimal fields\n**Created:** Automated test via MCP server\n**Board:** JAR';
+            
+            const jiraTicket = new JiraTicket({
+                title: 'Test Ticket',
+                description: markdownText
+            });
+            
+            const adf = jiraTicket.toADF();
+            
+            console.log('=== Multiple Bold Elements Test ===');
+            console.log('Input Markdown:', markdownText);
+            console.log('Output ADF:', JSON.stringify(adf, null, 2));
+            console.log('========================');
+            
+            // The ADF should have proper strong marks for "Purpose:", "Created:", and "Board:"
+            expect(adf.content).toBeDefined();
+            expect(adf.content.length).toBeGreaterThan(0);
+            
+            // UPDATED: Lines starting with bold formatting should be separate paragraphs for proper Jira rendering
+            const paragraphs = adf.content.filter((node: any) => node.type === 'paragraph');
+            expect(paragraphs.length).toBe(3); // Should be 3 separate paragraphs to avoid embedded newlines
+            
+            // Verify each paragraph has the correct bold element
+            const boldTexts = paragraphs.map((p: any) => {
+                if (p.content) {
+                    const boldNode = p.content.find((node: any) => 
+                        node.marks && node.marks.some((mark: any) => mark.type === 'strong')
+                    );
+                    return boldNode ? boldNode.text : null;
+                }
+                return null;
+            }).filter(Boolean);
+
+            // Should have 3 bold elements: "Purpose:", "Created:", "Board:"
+            expect(boldTexts.length).toBe(3);
+            expect(boldTexts).toEqual(['Purpose:', 'Created:', 'Board:']);
+            
+            // Verify no embedded newlines in any text nodes
+            const allTextNodes: any[] = [];
+            const extractTextNodes = (content: any[]) => {
+                content.forEach((node: any) => {
+                    if (node.type === 'text') {
+                        allTextNodes.push(node);
+                    } else if (node.content) {
+                        extractTextNodes(node.content);
+                    }
+                });
+            };
+            extractTextNodes(adf.content);
+            
+            // Critical: No text node should contain embedded newlines
+            const hasEmbeddedNewlines = allTextNodes.some(node => node.text && node.text.includes('\n'));
+            expect(hasEmbeddedNewlines).toBe(false);
+        });
+
+        test('should convert multiple bold elements in a single line', () => {
+            const markdownText = 'This has **first bold** and **second bold** text in one line.';
+            
+            const jiraTicket = new JiraTicket({
+                title: 'Test Ticket',
+                description: markdownText
+            });
+            
+            const adf = jiraTicket.toADF();
+            
+            console.log('=== Multiple Bold in Single Line Test ===');
+            console.log('Input Markdown:', markdownText);
+            console.log('Output ADF:', JSON.stringify(adf, null, 2));
+            console.log('========================');
+            
+            // The ADF should have proper strong marks for both bold elements
+            expect(adf.content).toBeDefined();
+            expect(adf.content.length).toBe(1); // Should be 1 paragraph
+            
+            const paragraph = adf.content[0];
+            expect(paragraph.type).toBe('paragraph');
+            expect(paragraph.content).toBeDefined();
+            
+            if (paragraph.content) {
+                // Should have multiple nodes: text -> bold -> text -> bold -> text
+                expect(paragraph.content.length).toBe(5);
+                
+                // Check structure
+                expect(paragraph.content[0].text).toBe('This has ');
+                expect(paragraph.content[1].text).toBe('first bold');
+                expect(paragraph.content[1].marks?.[0]?.type).toBe('strong');
+                expect(paragraph.content[2].text).toBe(' and ');
+                expect(paragraph.content[3].text).toBe('second bold');
+                expect(paragraph.content[3].marks?.[0]?.type).toBe('strong');
+                expect(paragraph.content[4].text).toBe(' text in one line.');
+            }
+        });
+
+        test('should handle mixed formatting', () => {
+            const markdownText = '**Bold text** with *italic text* and `code text` plus [link text](https://example.com)';
+            
+            const jiraTicket = new JiraTicket({
+                title: 'Test Ticket',
+                description: markdownText
+            });
+            
+            const adf = jiraTicket.toADF();
+            
+            console.log('=== Mixed Formatting Test ===');
+            console.log('Input Markdown:', markdownText);
+            console.log('Output ADF:', JSON.stringify(adf, null, 2));
+            console.log('========================');
+            
+            // The ADF should have all different types of formatting
+            expect(adf.content).toBeDefined();
+            expect(adf.content.length).toBe(1); // Should be 1 paragraph
+            
+            const paragraph = adf.content[0];
+            expect(paragraph.type).toBe('paragraph');
+            expect(paragraph.content).toBeDefined();
+            
+            if (paragraph.content) {
+                // Find each formatted element
+                const boldNode = paragraph.content.find((node: any) => 
+                    node.marks && node.marks.some((mark: any) => mark.type === 'strong')
+                );
+                expect(boldNode).toBeDefined();
+                expect(boldNode?.text).toBe('Bold text');
+                
+                const italicNode = paragraph.content.find((node: any) => 
+                    node.marks && node.marks.some((mark: any) => mark.type === 'em')
+                );
+                expect(italicNode).toBeDefined();
+                expect(italicNode?.text).toBe('italic text');
+                
+                const codeNode = paragraph.content.find((node: any) => 
+                    node.marks && node.marks.some((mark: any) => mark.type === 'code')
+                );
+                expect(codeNode).toBeDefined();
+                expect(codeNode?.text).toBe('code text');
+                
+                const linkNode = paragraph.content.find((node: any) => 
+                    node.marks && node.marks.some((mark: any) => mark.type === 'link')
+                );
+                expect(linkNode).toBeDefined();
+                expect(linkNode?.text).toBe('link text');
+            }
+        });
+    });
 }); 
