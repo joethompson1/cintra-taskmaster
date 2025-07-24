@@ -10,6 +10,7 @@ import { registerRemoveTaskTool } from './tools/remove-task';
 import { registerAddJiraCommentTool } from './tools/add-jira-comment';
 import { registerGetJiraAttachmentTool } from './tools/get-jira-attachment';
 import { registerExpandJiraTaskTool } from './tools/expand-jira-task';
+import { registerGetTicketTemplateTool } from './tools/get-ticket-template';
 
 export function setupMcpServer(server: McpServer, getSessionConfig?: () => any): void {
     try {
@@ -23,6 +24,7 @@ export function setupMcpServer(server: McpServer, getSessionConfig?: () => any):
         registerAddJiraCommentTool(server, getSessionConfig);
         registerGetJiraAttachmentTool(server, getSessionConfig);
         registerExpandJiraTaskTool(server, getSessionConfig);
+        registerGetTicketTemplateTool(server);
 
     } catch (error: any) {
         logger.error(`Error registering Task Master tools: ${error.message}`);
