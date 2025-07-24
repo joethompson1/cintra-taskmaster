@@ -8,8 +8,9 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "jest",
-    "test:e2e": "jest --testPathPattern=e2e-integration.test.ts --verbose --runInBand",
-    "test:unit": "jest --testPathIgnorePatterns=e2e-integration.test.ts",
+    "test:unit": "jest src/__tests__/unit --verbose",
+    "test:integration": "jest src/__tests__/integration --verbose --runInBand",
+    "test:e2e": "jest src/__tests__/integration/e2e-integration.test.ts --verbose --runInBand",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts --no-warn-ignored",
     "lint:fix": "eslint src/**/*.ts --fix"

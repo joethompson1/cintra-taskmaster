@@ -7,10 +7,10 @@
 
 import request from 'supertest';
 import * as dotenv from 'dotenv';
-import { logger } from '../utils/logger';
+import { logger } from '../../utils/logger';
 // @ts-ignore
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
-import { setupMcpServer } from '../server/mcpServer';
+import { setupMcpServer } from '../../server/mcpServer';
 
 // Load environment variables
 dotenv.config();

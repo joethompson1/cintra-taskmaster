@@ -102,7 +102,7 @@ jobs:
             echo "⚠️  Skipping integration tests - JIRA_API_TOKEN not configured"
             exit 0
           fi
-          npm run test:e2e
+          npm run test:integration
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

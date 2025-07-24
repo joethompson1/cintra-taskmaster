@@ -3,7 +3,7 @@
  * Tests how the system converts Jira's ADF format back to markdown
  */
 
-import { JiraTicket } from '../utils/jira/jira-ticket';
+import { JiraTicket } from '../../utils/jira/jira-ticket';
 
 describe('ADF to Markdown Conversion', () => {
     describe('Simple ADF structures', () => {
