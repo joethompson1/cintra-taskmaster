@@ -11,7 +11,7 @@ import { registerAddJiraCommentTool } from './tools/add-jira-comment';
 import { registerGetJiraAttachmentTool } from './tools/get-jira-attachment';
 import { registerExpandJiraTaskTool } from './tools/expand-jira-task';
 
-export function setupMcpServer(server: McpServer, getSessionConfig?: () => any): void {
+export function setupMcpServer(server: McpServer, getSessionConfig?: () => unknown): void {
     try {
         logger.info('Registering Task Master tools...');
         registerGetTaskTool(server, getSessionConfig);
@@ -24,9 +24,11 @@ export function setupMcpServer(server: McpServer, getSessionConfig?: () => any):
         registerGetJiraAttachmentTool(server, getSessionConfig);
         registerExpandJiraTaskTool(server, getSessionConfig);
 
-    } catch (error: any) {
-        logger.error(`Error registering Task Master tools: ${error.message}`);
-        logger.error('Stack trace:', error.stack);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : 'No stack trace available';
+        logger.error(`Error registering Task Master tools: ${errorMessage}`);
+        logger.error('Stack trace:', errorStack);
         throw error;
     }
 } 

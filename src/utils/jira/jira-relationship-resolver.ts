@@ -348,7 +348,7 @@ export class JiraRelationshipResolver {
 				// Find the existing parent in relationships
 				const existingParent = relationships.find(r => r.issueKey === issue.parentKey && r.relationship === 'parent');
 				if (existingParent) {
-					parentResult = { success: true, data: existingParent.issue };
+					parentResult = { success: true, data: existingParent.issue as any };
 					shouldTraverse = true;
 				}
 			}

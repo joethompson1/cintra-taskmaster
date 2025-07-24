@@ -14,21 +14,26 @@ export interface JiraValidationResult {
     error?: string;
 }
 
+// Generic types for extensibility
+export type JiraCustomField = unknown; // Allow any type for custom fields
+export type SessionData = Record<string, unknown>;
+export type LogData = Record<string, unknown>;
+
 export interface JiraErrorResponse {
     success: false;
     error: {
         code: string;
         message: string;
-        details?: any;
+        details?: Record<string, unknown>;
     };
 }
 
-export interface JiraSuccessResponse<T = any> {
+export interface JiraSuccessResponse<T = unknown> {
     success: true;
     data: T;
 }
 
-export type JiraResponse<T = any> = JiraSuccessResponse<T> | JiraErrorResponse;
+export type JiraResponse<T = unknown> = JiraSuccessResponse<T> | JiraErrorResponse;
 
 // Jira API Response Types
 export interface JiraUser {
@@ -112,7 +117,7 @@ export interface JiraAttachment {
 export interface JiraComment {
     id: string;
     author: JiraUser;
-    body: any; // ADF format
+    body: ADFDocument; // ADF format
     created: string;
     updated: string;
     visibility?: {
@@ -128,7 +133,7 @@ export interface JiraTransition {
         id: string;
         name: string;
     };
-    fields?: Record<string, any>;
+    fields?: Record<string, unknown>;
 }
 
 export interface JiraRemoteLink {
@@ -157,7 +162,7 @@ export interface JiraIssue {
     self: string;
     fields: {
         summary: string;
-        description?: any; // ADF format
+        description?: ADFDocument; // ADF format
         status: JiraStatus;
         priority: JiraPriority;
         issuetype: JiraIssueType;
@@ -190,7 +195,7 @@ export interface JiraIssue {
         customfield_10014?: string; // Epic Link
         customfield_10015?: string; // Epic Name
         customfield_10016?: number; // Story Points
-        [key: string]: any; // Allow additional custom fields
+        [key: string]: JiraCustomField; // Allow additional custom fields
     };
     changelog?: {
         histories: Array<{
@@ -223,7 +228,7 @@ export interface JiraCreateIssueRequest {
             key: string;
         };
         summary: string;
-        description?: any; // ADF format
+        description?: ADFDocument; // ADF format
         issuetype: {
             name: string;
         };
@@ -241,14 +246,14 @@ export interface JiraCreateIssueRequest {
             name: string;
         }>;
         customfield_10014?: string; // Epic Link
-        [key: string]: any;
+        [key: string]: unknown;
     };
 }
 
 export interface JiraUpdateIssueRequest {
     fields?: {
         summary?: string;
-        description?: any; // ADF format
+        description?: ADFDocument; // ADF format
         priority?: {
             name: string;
         };
@@ -259,7 +264,7 @@ export interface JiraUpdateIssueRequest {
         components?: Array<{
             name: string;
         }>;
-        [key: string]: any;
+        [key: string]: unknown;
     };
 }
 
@@ -278,9 +283,9 @@ export interface JiraTicketData {
     jiraKey?: string;
     dependencies?: string[];
     status?: string;
-    attachments?: any[];
-    comments?: any[];
-    relatedContext?: any;
+    attachments?: unknown[];
+    comments?: unknown[];
+    relatedContext?: unknown;
 }
 
 export interface TaskMasterTask {
@@ -303,24 +308,24 @@ export interface TaskMasterTask {
     testStrategyTdd?: string;
     details?: string;
     implementationDetails?: string;
-    attachments?: any[];
-    comments?: any[];
-    relatedContext?: any;
+    attachments?: unknown[];
+    comments?: unknown[];
+    relatedContext?: unknown;
     pullRequests?: PullRequest[];
     relatedTickets?: ContextItem[];
-    relationshipSummary?: any;
-    contextSummary?: any;
+    relationshipSummary?: unknown;
+    contextSummary?: unknown;
 }
 
 // Atlassian Document Format (ADF) types
 export interface ADFNode {
     type: string;
-    attrs?: Record<string, any>;
+    attrs?: Record<string, unknown>;
     content?: ADFNode[];
     text?: string;
     marks?: Array<{
         type: string;
-        attrs?: Record<string, any>;
+        attrs?: Record<string, unknown>;
     }>;
 }
 
@@ -333,7 +338,7 @@ export interface ADFDocument {
 // Relationship Resolver types
 export interface RelationshipData {
     issueKey: string;
-    issue: any;
+    issue: unknown;
     relationship: string;
     depth: number;
     direction: 'inward' | 'outward' | 'upward' | 'downward';
@@ -422,7 +427,7 @@ export interface TrimStatistics {
 
 // Options interfaces for various operations
 export interface FetchOptions {
-    log?: any;
+    log?: Logger;
     includeComments?: boolean;
     includeContext?: boolean;
     includeImages?: boolean;
@@ -457,20 +462,20 @@ export interface SearchOptions {
 }
 
 export interface CreateOptions {
-    log?: any;
+    log?: Logger;
     validate?: boolean;
     notifyUsers?: boolean;
 }
 
 export interface UpdateOptions {
-    log?: any;
+    log?: Logger;
     notifyUsers?: boolean;
     overrideScreenSecurity?: boolean;
     overrideEditableFields?: boolean;
 }
 
 export interface TransitionOptions {
-    log?: any;
+    log?: Logger;
     skipRemoteOnlyCondition?: boolean;
 }
 
@@ -503,10 +508,10 @@ export interface AttachmentResponse {
 
 // Logger interface
 export interface Logger {
-    info(message: string, ...args: any[]): void;
-    warn(message: string, ...args: any[]): void;
-    error(message: string, ...args: any[]): void;
-    debug(message: string, ...args: any[]): void;
+    info(message: string, ...args: unknown[]): void;
+    warn(message: string, ...args: unknown[]): void;
+    error(message: string, ...args: unknown[]): void;
+    debug(message: string, ...args: unknown[]): void;
 }
 
 // Circuit breaker and caching types
@@ -539,7 +544,7 @@ export interface FindNextTaskOptions {
 }
 
 export interface UpdateIssuesOptions {
-    session?: any;
+    session?: SessionData;
     projectRoot?: string;
     mcpLog?: Logger;
 }
@@ -547,7 +552,7 @@ export interface UpdateIssuesOptions {
 export interface ExpandTaskOptions {
     reportProgress?: (message: string, level?: string) => void;
     mcpLog?: Logger;
-    session?: any;
+    session?: SessionData;
     force?: boolean;
 }
 
@@ -555,11 +560,11 @@ export interface GenerateSubtasksOptions {
     reportProgress?: (message: string, level?: string) => void;
     mcpLog?: Logger;
     silentMode?: boolean;
-    session?: any;
+    session?: SessionData;
 }
 
 export interface AnalyzeComplexityOptions {
-    session?: any;
+    session?: SessionData;
     model?: string;
 }
 
@@ -572,14 +577,14 @@ export interface FieldErrorSuggestion {
 export interface JiraApiError extends Error {
     response?: {
         status?: number;
-        data?: any;
-        headers?: any;
+        data?: unknown;
+        headers?: Record<string, string>;
     };
     config?: {
         url?: string;
         method?: string;
         baseURL?: string;
-        headers?: any;
+        headers?: Record<string, string>;
     };
     isAxiosError?: boolean;
     code?: string;
@@ -595,7 +600,7 @@ export interface PriorityValues {
 export interface IssueTypeMap {
     [key: string]: {
         isSubtask: boolean;
-        [key: string]: any;
+        [key: string]: unknown;
     };
 }
 

@@ -360,7 +360,7 @@ export class ContextAggregator {
 					direction: relationship.direction,
 					depth: relationship.depth,
 					pullRequests,
-					relevanceScore: this.calculateRelevanceScore(relationship.issue, pullRequests, relationship.relationship)
+					relevanceScore: this.calculateRelevanceScore(relationship.issue as any, pullRequests, relationship.relationship)
 				};
 			}));
 

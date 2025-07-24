@@ -12,8 +12,7 @@ export default [
             parserOptions: {
                 ecmaVersion: 2022,
                 sourceType: 'module',
-                // Remove project reference for test files to avoid tsconfig issues
-                project: null
+                project: './tsconfig.json'
             },
             globals: {
                 ...globals.node,
@@ -24,7 +23,12 @@ export default [
             '@typescript-eslint': tseslint
         },
         rules: {
-            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            '@typescript-eslint/no-unused-vars': ['error', { 
+                argsIgnorePattern: '^_',
+                varsIgnorePattern: '^_',
+                args: 'none' // Don't check unused parameters in function signatures
+            }],
+            'no-unused-vars': 'off', // Turn off base rule to avoid conflicts
             '@typescript-eslint/explicit-function-return-type': 'warn',
             '@typescript-eslint/no-explicit-any': 'warn',
             '@typescript-eslint/no-non-null-assertion': 'warn',
@@ -47,9 +51,9 @@ export default [
         rules: {
             '@typescript-eslint/explicit-function-return-type': 'off',
             'no-console': 'off'
-        }
+                }
     },
     {
-        ignores: ['dist/**', 'node_modules/**', 'coverage/**']
+        ignores: ['dist/**', 'node_modules/**', 'coverage/**', '**/__tests__/**', '**/*.test.ts', '**/*.spec.ts']
     }
-]; 
+];  

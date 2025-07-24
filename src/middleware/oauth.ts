@@ -6,6 +6,21 @@ import { statelessTokenManager } from '../utils/jwt-token-storage';
 // @ts-ignore
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 
+// Token response interface
+interface TokenResponse {
+    access_token: string;
+    refresh_token?: string;
+    token_type: string;
+    expires_in?: number;
+    scope?: string;
+    // OAuth-specific properties  
+    accessToken?: string; // Alias for access_token
+    refreshToken?: string; // Alias for refresh_token
+    cloudId?: string;
+    userId?: string;
+    expiresAt?: number;
+}
+
 // OAuth configuration
 interface OAuthConfig {
     authorizationUrl: string;
@@ -89,7 +104,7 @@ export class AtlassianOAuthMiddleware {
     /**
      * Handle OAuth callback and exchange code for tokens
      */
-    async handleCallback(code: string, state: string): Promise<{ sessionId: string; tokens: any }> {
+    async handleCallback(code: string, state: string): Promise<{ sessionId: string; tokens: TokenResponse }> {
         // Verify state
         const stateData = stateStore[state];
         if (!stateData) {
@@ -133,11 +148,17 @@ export class AtlassianOAuthMiddleware {
             return {
                 sessionId: stateData.sessionId,
                 tokens: {
+                    access_token: tokens.access_token,
+                    refresh_token: tokens.refresh_token,
+                    token_type: tokens.token_type || 'Bearer',
+                    expires_in: tokens.expires_in,
+                    scope: tokens.scope,
+                    // Add aliases and additional properties
                     accessToken: tokens.access_token,
                     refreshToken: tokens.refresh_token,
-                    expiresAt: Date.now() + (tokens.expires_in * 1000),
                     cloudId: cloudId,
-                    userId: userId
+                    userId: userId,
+                    expiresAt: Date.now() + (tokens.expires_in ? tokens.expires_in * 1000 : 3600000)
                 }
             };
         } catch (error) {
@@ -147,30 +168,10 @@ export class AtlassianOAuthMiddleware {
     }
 
     /**
-     * Refresh access token using refresh token
-     * Note: For stateless JWT approach, refreshing is handled in the OAuth endpoints
-     */
-    async refreshAccessToken(userId: string): Promise<string> {
-        // This method is no longer needed for stateless approach
-        // Refresh logic is handled directly in the OAuth token endpoint
-        throw new Error('Refresh token logic moved to OAuth endpoints for stateless approach');
-    }
-
-    /**
-     * Revoke tokens
-     * Note: For stateless JWT approach, revocation is handled in the OAuth endpoints
-     */
-    async revokeTokens(userId: string): Promise<void> {
-        // This method is no longer needed for stateless approach
-        // Revocation logic is handled directly in the OAuth revoke endpoint
-        logger.debug('Token revocation handled by OAuth endpoints in stateless approach');
-    }
-
-    /**
      * Middleware to extract OAuth tokens and convert to session config
      * Defaults to OAuth authentication but falls back to header-based auth if headers are present
      */
-    async authenticateOAuth(req: Request, res: Response, next: NextFunction) {
+    async authenticateOAuth(req: Request, res: Response, next: NextFunction): Promise<void | Response> {
         // Debug logging
         logger.info('OAuth middleware called', {
             method: req.method,
@@ -222,7 +223,7 @@ export class AtlassianOAuthMiddleware {
             
             // Return 401 with WWW-Authenticate header to trigger OAuth flow
             const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-            const discoveryUrl = `/.well-known/oauth-authorization-server`;
+            const discoveryUrl = '/.well-known/oauth-authorization-server';
             const authUrl = `${baseUrl}/auth/authorize`;
             
             if (isMcpEndpoint) {
@@ -312,26 +313,6 @@ export class AtlassianOAuthMiddleware {
             const value = req.headers[header];
             return value && typeof value === 'string' && value.trim() !== '';
         });
-    }
-
-    /**
-     * Get tokens for a user
-     * Note: For stateless JWT approach, tokens are not stored
-     */
-    async getTokens(userId: string) {
-        // Tokens are not stored in stateless approach - they're encoded in JWTs
-        logger.debug('getTokens() called but tokens are not stored in stateless approach');
-        return null;
-    }
-
-    /**
-     * Get all tokens (for searching)
-     * Note: For stateless JWT approach, tokens are not stored
-     */
-    getAllTokens() {
-        // Tokens are not stored in stateless approach - they're encoded in JWTs
-        logger.debug('getAllTokens() called but tokens are not stored in stateless approach');
-        return {};
     }
 
     /**

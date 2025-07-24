@@ -886,7 +886,7 @@ export class JiraTicket {
                     break;
                 case 'heading':
                     if (node.content) {
-                        const level = node.attrs?.level || 1;
+                        const level = (typeof node.attrs?.level === 'number' ? node.attrs.level : 1);
                         const headingText = this.extractTextFromNodes(node.content, true);
                         const headerPrefix = '#'.repeat(level);
                         textParts.push(`${headerPrefix} ${headingText}`);
