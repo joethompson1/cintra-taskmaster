@@ -63,6 +63,9 @@ This MCP server supports two authentication methods:
    JIRA_EMAIL=your-email@example.com
    JIRA_API_TOKEN=your-jira-api-token
    
+   # AI Services (required for update_jira_task and expand_jira_task tools)
+   ANTHROPIC_API_KEY=your-anthropic-api-key
+   
    # Bitbucket Configuration (optional)
    BITBUCKET_WORKSPACE=your-workspace
    BITBUCKET_EMAIL=your-email@example.com
@@ -257,13 +260,6 @@ Build and run with Docker:
 ```bash
 docker build -t cintra-taskmaster .
 docker run -p 3000:3000 --env-file .env cintra-taskmaster
-```
-
-### Docker Compose
-
-For local development:
-```bash
-docker-compose up
 ```
 
 ## Security Considerations

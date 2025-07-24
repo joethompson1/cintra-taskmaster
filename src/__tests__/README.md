@@ -36,11 +36,12 @@ src/__tests__/
 - Run in all environments
 
 ### Integration Tests
-- Require Jira instance access
+- Require Jira instance access and AI services
 - Need environment variables:
   - `JIRA_API_URL`
   - `JIRA_EMAIL`
   - `JIRA_API_TOKEN`
   - `JIRA_PROJECT`
+  - `ANTHROPIC_API_KEY` (for AI-powered features)
 - Create and clean up test tickets automatically
 - Use safety measures to prevent affecting real work tickets 

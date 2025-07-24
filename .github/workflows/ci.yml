@@ -97,6 +97,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           JIRA_PROJECT: ${{ secrets.JIRA_PROJECT }}
           IS_OAUTH: ${{ secrets.IS_OAUTH }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -z "$JIRA_API_TOKEN" ]; then
             echo "⚠️  Skipping integration tests - JIRA_API_TOKEN not configured"
