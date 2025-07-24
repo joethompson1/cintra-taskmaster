@@ -174,7 +174,7 @@ describe('Update Task Integration Test', () => {
                 acceptanceCriteria: `- [ ] First acceptance criterion with **Framework**: React Native
 - [ ] Second criterion with *emphasis*
 - [ ] Third criterion with code \`example\``,
-                details: `## Implementation Steps
+                implementationDetails: `## Implementation Steps
 - **Framework**: React Native
 - **Architecture**: Clean architecture
 - **Database**: PostgreSQL`,
