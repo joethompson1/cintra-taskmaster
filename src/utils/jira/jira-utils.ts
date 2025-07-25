@@ -17,7 +17,7 @@ import {
 	FetchOptions,
 	CompressionResult,
 } from '../../types/jira';
-import { generateText } from '../ai-services';
+import { generateText } from '../ai/ai-services';
 
 /**
  * Estimate token count for text content

@@ -12,7 +12,7 @@ import { JiraClient } from '../../utils/jira/jira-client';
 import { JiraTicket } from '../../utils/jira/jira-ticket';
 import { createErrorResponse } from '../../utils/utils';
 import { useSessionConfigs } from '../../utils/config';
-import { generateText } from '../../utils/ai-services';
+import { generateText } from '../../utils/ai/ai-services';
 
 export function registerUpdateTaskTool(server: McpServer, getSessionConfig?: () => any): void {
     server.registerTool('update_jira_task', {

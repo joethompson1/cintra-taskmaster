@@ -10,7 +10,6 @@ import { registerRemoveTaskTool } from './tools/remove-task';
 import { registerAddJiraCommentTool } from './tools/add-jira-comment';
 import { registerGetJiraAttachmentTool } from './tools/get-jira-attachment';
 import { registerExpandJiraTaskTool } from './tools/expand-jira-task';
-import { registerGetTicketTemplateTool } from './tools/get-ticket-template';
 
 export function setupMcpServer(server: McpServer, getSessionConfig?: () => unknown): void {
     try {
@@ -24,8 +23,6 @@ export function setupMcpServer(server: McpServer, getSessionConfig?: () => unkno
         registerAddJiraCommentTool(server, getSessionConfig);
         registerGetJiraAttachmentTool(server, getSessionConfig);
         registerExpandJiraTaskTool(server, getSessionConfig);
-        registerGetTicketTemplateTool(server);
-
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         const errorStack = error instanceof Error ? error.stack : 'No stack trace available';
