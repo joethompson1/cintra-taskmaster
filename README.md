@@ -27,13 +27,7 @@ A TypeScript MCP (Model Context Protocol) server for Jira and Bitbucket task man
    npm install
    ```
 
-2. Configure environment:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your credentials
-   ```
-
-3. Required environment variables:
+2. Required environment variables:
    ```bash
    # Jira Configuration
    JIRA_API_URL=https://your-domain.atlassian.net
@@ -53,7 +47,7 @@ A TypeScript MCP (Model Context Protocol) server for Jira and Bitbucket task man
    JWT_SECRET=your-jwt-secret
    ```
 
-4. Start the server:
+3. Start the server:
    ```bash
    npm run build
    npm start
