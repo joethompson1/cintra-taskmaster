@@ -7,10 +7,10 @@
 
 import request from 'supertest';
 import * as dotenv from 'dotenv';
-import { logger } from '../utils/logger';
+import { logger } from '../../utils/logger';
 // @ts-ignore
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
-import { setupMcpServer } from '../server/mcpServer';
+import { setupMcpServer } from '../../server/mcpServer';
 
 // Load environment variables
 dotenv.config();
@@ -344,7 +344,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
                 testStrategy: '## Test Strategy\n- Create epic → task → subtasks hierarchy\n- Test all 9 tools\n- Verify complete cleanup',
                 issueType: 'Epic',
                 priority: 'Medium',
-                projectKey: process.env.JIRA_PROJECT || "JAR"
+                projectKey: process.env.JIRA_PROJECT || 'JAR'
             });
 
         expect(response.status).toBe(200);
@@ -411,7 +411,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
                 issueType: 'Task',
                 priority: 'Medium',
                 parentKey: testData.epicId,
-                projectKey: process.env.JIRA_PROJECT || "JAR"
+                projectKey: process.env.JIRA_PROJECT || 'JAR'
             });
 
         expect(response.status).toBe(200);
@@ -537,7 +537,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
         // Test with "all" to get next task from entire board
         const response = await request(serverUrl)
             .post('/tools/next_jira_task')
-            .send({ parentKey: "all" });
+            .send({ parentKey: 'all' });
 
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty('content');
@@ -554,14 +554,14 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
                     expect(taskData.issueType).not.toBe('Epic');
                     console.log(`✅ Next task is not an epic: ${taskData.issueType} - ${taskData.title}`);
                 } else {
-                    console.log(`✅ Response is not a task object (this is also valid)`);
+                    console.log('✅ Response is not a task object (this is also valid)');
                 }
             } catch (parseError) {
                 // If it's not JSON, that's also fine - just log it
-                console.log(`✅ Response is not JSON format (this is also valid)`);
+                console.log('✅ Response is not JSON format (this is also valid)');
             }
         } else {
-            console.log(`✅ No eligible tasks found (this is also valid)`);
+            console.log('✅ No eligible tasks found (this is also valid)');
         }
     });
 
@@ -575,8 +575,8 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
         const projectResponse = await request(serverUrl)
             .post('/tools/next_jira_task')
             .send({ 
-                parentKey: "all", 
-                projectKey: process.env.JIRA_PROJECT || "JAR"
+                parentKey: 'all', 
+                projectKey: process.env.JIRA_PROJECT || 'JAR'
             });
 
         expect(projectResponse.status).toBe(200);
@@ -584,14 +584,14 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
         
         const projectResponseText = projectResponse.body.content[0].text;
         expect(projectResponseText).toBeDefined();
-        console.log(`✅ Project filter test completed`);
+        console.log('✅ Project filter test completed');
         
         // Test with assignee filter (using a non-existent email to ensure no matches)
         const assigneeResponse = await request(serverUrl)
             .post('/tools/next_jira_task')
             .send({ 
-                parentKey: "all", 
-                assigneeEmail: "nonexistent@example.com"
+                parentKey: 'all', 
+                assigneeEmail: 'nonexistent@example.com'
             });
 
         expect(assigneeResponse.status).toBe(200);
@@ -599,7 +599,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
         
         const assigneeResponseText = assigneeResponse.body.content[0].text;
         expect(assigneeResponseText).toBeDefined();
-        console.log(`✅ Assignee filter test completed`);
+        console.log('✅ Assignee filter test completed');
     });
 
     // ======================

@@ -1,0 +1,16 @@
+---
+alwaysApply: true
+---
+
+## Code Quality Standards
+### Code Style Rules
+1. **Use Prettier** for consistent formatting
+2. **ESLint compliance** - fix all linting errors
+3. **Meaningful variable names** - avoid abbreviations
+4. **Small, focused functions** - single responsibility principle
+5. **Comprehensive comments** for complex business logic
+
+### Documentation Rules
+1. **JSDoc comments** for all public functions and classes
+2. **README updates** when adding new tools or changing APIs
+3. **Type documentation** for complex interfaces

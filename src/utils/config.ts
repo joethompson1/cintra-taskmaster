@@ -6,7 +6,7 @@ export interface SessionConfig {
     JIRA_PROJECT?: string;
     BITBUCKET_EMAIL?: string;
     BITBUCKET_API_TOKEN?: string;
-    [key: string]: any;
+    [key: string]: string | undefined;
 }
 
 export interface JiraConfig {
@@ -59,7 +59,7 @@ export function useSessionConfigs(
         email: sessionConfig.JIRA_EMAIL,
         apiToken: sessionConfig.JIRA_API_TOKEN,
         project: sessionConfig.JIRA_PROJECT,
-        isOAuth: sessionConfig.IS_OAUTH || false,
+        isOAuth: sessionConfig.IS_OAUTH === 'true',
     } : {};
 
     // Build Bitbucket configuration

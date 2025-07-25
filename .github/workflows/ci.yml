@@ -87,24 +87,23 @@ jobs:
         if: needs.install-and-cache.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Run tests
-        run: npm test
+      - name: Run unit tests
+        run: npm run test:unit
 
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-${{ github.sha }}
-          path: test-results/
-          retention-days: 30
-
-      - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-${{ github.sha }}
-          path: coverage/
-          retention-days: 30
+      - name: Run integration tests
+        env:
+          JIRA_API_URL: ${{ secrets.JIRA_API_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT: ${{ secrets.JIRA_PROJECT }}
+          IS_OAUTH: ${{ secrets.IS_OAUTH }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$JIRA_API_TOKEN" ]; then
+            echo "⚠️  Skipping integration tests - JIRA_API_TOKEN not configured"
+            exit 0
+          fi
+          npm run test:integration
 
   ci-success:
     runs-on: ubuntu-latest

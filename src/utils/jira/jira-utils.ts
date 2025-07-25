@@ -101,11 +101,11 @@ function trimResponseForTokenLimit(responseData: any, maxTokens: number, log: Lo
 	const imagesTokens = images ? images.length * 50 : 0; // Rough estimate for image metadata
 	let currentTokens = mainTaskTokens + imagesTokens;
 	
-	log.info(`Initial token estimate: ${currentTokens} (main task: ${mainTaskTokens}, images: ${imagesTokens})`);
+	log?.info(`Initial token estimate: ${currentTokens} (main task: ${mainTaskTokens}, images: ${imagesTokens})`);
 	
 	// If we're already under the limit, return as is
 	if (currentTokens <= maxTokens) {
-		log.info(`Response within token limit (${currentTokens} <= ${maxTokens})`);
+		log?.info(`Response within token limit (${currentTokens} <= ${maxTokens})`);
 		return responseData;
 	}
 	
@@ -131,7 +131,7 @@ function trimResponseForTokenLimit(responseData: any, maxTokens: number, log: Lo
 						const contextImagesRemoved = trimmedImages.length;
 						trimStats.removedImages = contextImagesRemoved;
 						trimmedImages = [];
-						log.info(`Removed ${contextImagesRemoved} context images`);
+						log?.info(`Removed ${contextImagesRemoved} context images`);
 						return contextImagesRemoved * 50; // Rough token savings
 					}
 					return 0;
@@ -163,7 +163,7 @@ function trimResponseForTokenLimit(responseData: any, maxTokens: number, log: Lo
 					currentTokens -= ticketTokens;
 					ticketsRemoved++;
 					
-					log.info(`Removed ticket ${removedTicket.ticket?.jiraKey || removedTicket.ticket?.id || 'unknown'} (relevance: ${removedTicket.relevanceScore || 0})`);
+					log?.info(`Removed ticket ${removedTicket.ticket?.jiraKey || removedTicket.ticket?.id || 'unknown'} (relevance: ${removedTicket.relevanceScore || 0})`);
 				}
 				
 				// Update the task with remaining tickets
@@ -171,7 +171,7 @@ function trimResponseForTokenLimit(responseData: any, maxTokens: number, log: Lo
 				trimStats.removedTickets = ticketsRemoved;
 				
 				if (ticketsRemoved > 0) {
-					log.info(`Removed ${ticketsRemoved} related tickets (saved ~${tokensFreed} tokens)`);
+					log?.info(`Removed ${ticketsRemoved} related tickets (saved ~${tokensFreed} tokens)`);
 				}
 				
 				return tokensFreed;
@@ -190,7 +190,7 @@ function trimResponseForTokenLimit(responseData: any, maxTokens: number, log: Lo
 						trimmedTask.pullRequests = trimmedTask.pullRequests.slice(0, 2); // Keep only 2 most recent
 						prsRemoved += (originalPRs - 2);
 						tokensFreed += (originalPRs - 2) * 100; // Rough estimate
-						log.info(`Trimmed PR data from ${originalPRs} to 2 PRs`);
+						log?.info(`Trimmed PR data from ${originalPRs} to 2 PRs`);
 					}
 				}
 				
@@ -223,7 +223,7 @@ function trimResponseForTokenLimit(responseData: any, maxTokens: number, log: Lo
 					trimmedTask.details = trimmedTask.details.substring(0, 500) + '... [truncated]';
 					tokensFreed += estimateTokenCount(trimmedTask.details.substring(500));
 					fieldsCount++;
-					log.info(`Truncated main task details from ${originalLength} to 500 characters`);
+					log?.info(`Truncated main task details from ${originalLength} to 500 characters`);
 				}
 				
 				// Trim detailed fields from related tickets
@@ -258,7 +258,7 @@ function trimResponseForTokenLimit(responseData: any, maxTokens: number, log: Lo
 					trimStats.removedTickets += ticketsRemoved;
 					trimmedTask.relatedTickets = [];
 					currentTokens -= tokensFreed;
-					log.info(`Removed all remaining ${ticketsRemoved} related tickets`);
+					log?.info(`Removed all remaining ${ticketsRemoved} related tickets`);
 					return tokensFreed;
 				}
 				return 0;
@@ -272,7 +272,7 @@ function trimResponseForTokenLimit(responseData: any, maxTokens: number, log: Lo
 		
 		const tokensFreed = step.action();
 		if (tokensFreed > 0) {
-			log.info(`${step.name}: freed ~${tokensFreed} tokens, current estimate: ${currentTokens}`);
+			log?.info(`${step.name}: freed ~${tokensFreed} tokens, current estimate: ${currentTokens}`);
 		}
 	}
 	
@@ -358,17 +358,17 @@ function trimResponseForTokenLimit(responseData: any, maxTokens: number, log: Lo
 	
 	// Final check
 	const finalTokens = estimateObjectTokens(trimmedTask) + (trimmedImages.length * 50);
-	log.info(`Final token estimate after trimming: ${finalTokens} (target: ${maxTokens})`);
+	log?.info(`Final token estimate after trimming: ${finalTokens} (target: ${maxTokens})`);
 	
 	if (finalTokens > maxTokens) {
-		log.warn(`Response still exceeds token limit after trimming (${finalTokens} > ${maxTokens})`);
+		log?.warn(`Response still exceeds token limit after trimming (${finalTokens} > ${maxTokens})`);
 		// Add a warning to the task
 		trimmedTask._trimWarning = `Response was trimmed to fit within token limits. Some context may be missing.`;
 	}
 	
 	// Log trimming summary
 	if (trimStats.removedTickets > 0 || trimStats.removedImages > 0 || trimStats.trimmedPRs > 0) {
-		log.info(`Trimming summary: ${trimStats.removedTickets} tickets, ${trimStats.removedImages} images, ${trimStats.trimmedPRs} PRs, ${trimStats.trimmedFields} fields truncated`);
+		log?.info(`Trimming summary: ${trimStats.removedTickets} tickets, ${trimStats.removedImages} images, ${trimStats.trimmedPRs} PRs, ${trimStats.trimmedFields} fields truncated`);
 	}
 	
 	return {
@@ -415,7 +415,7 @@ export async function fetchJiraTaskDetails(
 		if (!jiraClient.isReady()) {
 			// Log detailed validation errors
 			const validation = jiraClient.validateConfig(log);
-			log.error('Jira client validation failed:', {
+			log?.error('Jira client validation failed:', {
 				missingFields: validation.missingFields,
 				enabled: jiraClient.enabled,
 				hasClient: !!jiraClient.client,
@@ -437,7 +437,7 @@ export async function fetchJiraTaskDetails(
 			};
 		}
 
-		log.info(
+		log?.info(
 			`Fetching Jira task details for key: ${taskId}${includeImages === false ? ' (excluding images)' : ''}${includeComments ? ' (including comments)' : ''}${maxTokens !== 40000 ? ` (max tokens: ${maxTokens})` : ''}`
 		);
 
@@ -463,7 +463,7 @@ export async function fetchJiraTaskDetails(
 				subtasksData = await fetchTasksFromJira(taskId, withSubtasks, log, { includeComments });
 			} catch (subtaskError: unknown) {
 				const errorMessage = subtaskError instanceof Error ? subtaskError.message : String(subtaskError);
-				log.warn(
+				log?.warn(
 					`Could not fetch subtasks for ${taskId}: ${errorMessage}`
 				);
 				// Continue without subtasks - this is not fatal
@@ -499,7 +499,7 @@ export async function fetchJiraTaskDetails(
 			} catch (contextError: unknown) {
 				// Context failure should not break the main functionality
 				const errorMessage = contextError instanceof Error ? contextError.message : String(contextError);
-				log.warn(`Failed to add context to task ${taskId}: ${errorMessage}`);
+				log?.warn(`Failed to add context to task ${taskId}: ${errorMessage}`);
 				// Continue without context
 			}
 		}
@@ -512,7 +512,7 @@ export async function fetchJiraTaskDetails(
 			const trimmedPRTokens = estimateObjectTokens(task.pullRequests);
 			const tokensSaved = originalPRTokens - trimmedPRTokens;
 			if (tokensSaved > 0) {
-				log.info(`Trimmed PR fields from main task, saved ~${tokensSaved} tokens`);
+				log?.info(`Trimmed PR fields from main task, saved ~${tokensSaved} tokens`);
 			}
 		}
 
@@ -529,7 +529,7 @@ export async function fetchJiraTaskDetails(
 				}
 			});
 			if (totalPRTokensSaved > 0) {
-				log.info(`Trimmed PR fields from related tickets, saved ~${totalPRTokensSaved} tokens`);
+				log?.info(`Trimmed PR fields from related tickets, saved ~${totalPRTokensSaved} tokens`);
 			}
 		}
 
@@ -557,7 +557,7 @@ export async function fetchJiraTaskDetails(
 		};
 	} catch (error: unknown) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		log.error(`Error fetching Jira task details: ${errorMessage}`);
+		log?.error(`Error fetching Jira task details: ${errorMessage}`);
 
 		// Handle 404 Not Found specifically
 		if (error && typeof error === 'object' && 'response' in error && 
@@ -648,13 +648,13 @@ export async function fetchTasksFromJira(parentKey: string | null, withSubtasks:
 		if (parentKey) {
 			// If parentKey is provided, get subtasks for the specific parent
 			jql = `project = "${jiraClient.config.project}" AND parent = "${parentKey}" ORDER BY created ASC`;
-			log.info(
+			log?.info(
 				`Fetching Jira subtasks for parent ${parentKey} with JQL: ${jql}${includeComments ? ' (including comments)' : ''}`
 			);
 		} else {
 			// If no parentKey, get all tasks in the project
 			jql = `project = "${jiraClient.config.project}" ORDER BY created ASC`;
-			log.info(`Fetching all Jira tasks with JQL: ${jql}${includeComments ? ' (including comments)' : ''}`);
+			log?.info(`Fetching all Jira tasks with JQL: ${jql}${includeComments ? ' (including comments)' : ''}`);
 		}
 
 		// Use the searchIssues method instead of direct HTTP request
@@ -671,7 +671,7 @@ export async function fetchTasksFromJira(parentKey: string | null, withSubtasks:
 
 		const issues = searchResult.data;
 		if (issues.length === 0) {
-			log.info(`No issues found with the specified ID(s)`);
+			log?.info(`No issues found with the specified ID(s)`);
 			return {
 				success: false,
 				error: {
@@ -689,7 +689,7 @@ export async function fetchTasksFromJira(parentKey: string | null, withSubtasks:
 
 				// Fetch subtasks if withSubtasks is true and the ticket has subtasks
 				if (withSubtasks && jiraTicket.jiraKey) {
-					log.info(`Fetching subtasks for ${jiraTicket.jiraKey}`);
+					log?.info(`Fetching subtasks for ${jiraTicket.jiraKey}`);
 					try {
 						// Recursive call to fetch subtasks using the current issue key as parent
 						const subtasksResult = await fetchTasksFromJira(
@@ -700,13 +700,13 @@ export async function fetchTasksFromJira(parentKey: string | null, withSubtasks:
 						);
 						if (subtasksResult && subtasksResult.tasks) {
 							task.subtasks = subtasksResult.tasks;
-							log.info(
+							log?.info(
 								`Added ${task.subtasks.length} subtasks to ${jiraTicket.jiraKey}`
 							);
 						}
 					} catch (subtaskError: unknown) {
 						const errorMessage = subtaskError instanceof Error ? subtaskError.message : String(subtaskError);
-						log.warn(
+						log?.warn(
 							`Error fetching subtasks for ${jiraTicket.jiraKey}: ${errorMessage}`
 						);
 						// Continue without subtasks - this is not fatal
@@ -793,7 +793,7 @@ export async function fetchTasksFromJira(parentKey: string | null, withSubtasks:
 		};
 	} catch (error: unknown) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		log.error(`Error fetching tasks from Jira: ${errorMessage}`);
+		log?.error(`Error fetching tasks from Jira: ${errorMessage}`);
 		throw error;
 	}
 }
@@ -860,7 +860,7 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions & {
 		try {
 			const client = jiraClient.getClient();
 			await client.get(`/rest/api/3/project/${projectKey}`);
-			log.info(`✓ Project key ${projectKey} validated`);
+			log?.info(`✓ Project key ${projectKey} validated`);
 		} catch (projectError: unknown) {
 			const isAxiosError = projectError && typeof projectError === 'object' && 'response' in projectError;
 			const status = isAxiosError ? (projectError as any).response?.status : null;
@@ -893,7 +893,7 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions & {
 			try {
 				const client = jiraClient.getClient();
 				await client.get(`/rest/api/3/issue/${jiraTicket.parentKey}`);
-				log.info(`✓ Parent key ${jiraTicket.parentKey} validated`);
+				log?.info(`✓ Parent key ${jiraTicket.parentKey} validated`);
 			} catch (parentError: unknown) {
 				const isAxiosError = parentError && typeof parentError === 'object' && 'response' in parentError;
 				const errorMessage = (isAxiosError && (parentError as any).response?.status === 404)
@@ -930,14 +930,14 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions & {
 		const requestPayload = jiraTicket.toJiraRequestData(projectKey);
 		
 		// Log request details for debugging (without sensitive data)
-		log.info(`Creating ${jiraTicket.issueType} with fields: ${Object.keys(requestPayload.fields).join(', ')}`);
+		log?.info(`Creating ${jiraTicket.issueType} with fields: ${Object.keys(requestPayload.fields).join(', ')}`);
 		
 		if (jiraTicket.issueType === 'Subtask') {
-			log.info(`Creating Jira subtask under parent ${jiraTicket.parentKey}`);
+			log?.info(`Creating Jira subtask under parent ${jiraTicket.parentKey}`);
 		} else {
-			log.info(`Creating Jira ${jiraTicket.issueType.toLowerCase()}`);
+			log?.info(`Creating Jira ${jiraTicket.issueType.toLowerCase()}`);
 			if (jiraTicket.parentKey) {
-				log.info(`... linked to parent/epic ${jiraTicket.parentKey}`);
+				log?.info(`... linked to parent/epic ${jiraTicket.parentKey}`);
 			}
 		}
 
@@ -1020,8 +1020,8 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions & {
 
 			// If it's a priority field error and we included priority, retry without it
 			if (isPriorityError && jiraTicket.priority) {
-				log.warn(`Priority field error detected: ${specificErrors.priority}`);
-				log.info('Retrying issue creation without priority field...');
+				log?.warn(`Priority field error detected: ${specificErrors.priority}`);
+				log?.info('Retrying issue creation without priority field...');
 
 				// Get the request body and remove priority from it
 				const retryPayload = { ...requestPayload };
@@ -1048,7 +1048,7 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions & {
 						}
 					};
 				} catch (retryError: any) {
-					log.error(`Error creating Jira issue on retry: ${retryError.message}`);
+					log?.error(`Error creating Jira issue on retry: ${retryError.message}`);
 					throw retryError;
 				}
 			}
@@ -1062,7 +1062,7 @@ export async function createJiraIssue(jiraTicket: any, options: FetchOptions & {
 			jiraTicket.issueType === 'Subtask'
 				? 'subtask'
 				: jiraTicket.issueType.toLowerCase();
-		log.error(`Error creating Jira ${issueTypeDisplay}: ${error.message}`);
+		log?.error(`Error creating Jira ${issueTypeDisplay}: ${error.message}`);
 
 		// Enhanced error details for debugging
 		const errorResponse = error.response?.data;
@@ -1173,7 +1173,7 @@ export async function setJiraTaskStatus(taskId: string, newStatus: string, optio
 	try {
 		const { jiraConfig, log } = options;
 
-		log.info(`Updating Jira task ${taskId} status to: ${newStatus}`);
+		log?.info(`Updating Jira task ${taskId} status to: ${newStatus}`);
 
 		// Check if Jira is enabled using the JiraClient
 		const jiraClient = new JiraClient(jiraConfig);
@@ -1194,7 +1194,7 @@ export async function setJiraTaskStatus(taskId: string, newStatus: string, optio
 
 		// Update each task
 		for (const id of taskIds) {
-			log.info(`Updating status for Jira issue ${id} to "${newStatus}"...`);
+			log?.info(`Updating status for Jira issue ${id} to "${newStatus}"...`);
 
 			try {
 				// Use the JiraClient's transitionIssue method
@@ -1210,13 +1210,13 @@ export async function setJiraTaskStatus(taskId: string, newStatus: string, optio
 					);
 				}
 
-				log.info(
+				log?.info(
 					`Successfully updated Jira issue ${id} status to "${newStatus}"`
 				);
 				updatedTasks.push(id);
 					} catch (error: unknown) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			log.error(`Error updating status for issue ${id}: ${errorMessage}`);
+			log?.error(`Error updating status for issue ${id}: ${errorMessage}`);
 			throw new Error(`Failed to update Jira issue ${id}: ${errorMessage}`);
 			}
 		}
@@ -1237,7 +1237,7 @@ export async function setJiraTaskStatus(taskId: string, newStatus: string, optio
 		const fullErrorMessage = `Error setting Jira task status: ${errorMessage}`;
 
 		if (options.log) {
-			options.log.error(fullErrorMessage);
+			options.log?.error(fullErrorMessage);
 		}
 		// Don't use console.error in MCP mode as it breaks the JSON protocol
 
@@ -1289,9 +1289,9 @@ export async function findNextJiraTask(
 		let allTasks = [];
 
 		if (parentKey) {
-			log.info(`Finding next task for parent/epic: ${parentKey}${targetProject ? ` in project ${targetProject}` : ''}${assigneeEmail ? ` assigned to ${assigneeEmail}` : ''}`);
+			log?.info(`Finding next task for parent/epic: ${parentKey}${targetProject ? ` in project ${targetProject}` : ''}${assigneeEmail ? ` assigned to ${assigneeEmail}` : ''}`);
 		} else {
-			log.info(`Finding next task from all workable tasks${targetProject ? ` in project ${targetProject}` : ''}${assigneeEmail ? ` assigned to ${assigneeEmail}` : ''}`);
+			log?.info(`Finding next task from all workable tasks${targetProject ? ` in project ${targetProject}` : ''}${assigneeEmail ? ` assigned to ${assigneeEmail}` : ''}`);
 		}
 
 		// Always use custom JQL query to ensure proper filtering (including epic exclusion)
@@ -1319,7 +1319,7 @@ export async function findNextJiraTask(
 		// Build final JQL
 		const jql = jqlParts.join(' AND ') + ' ORDER BY created ASC';
 		
-		log.info(`Using JQL query: ${jql}`);
+		log?.info(`Using JQL query: ${jql}`);
 		
 		// Use the searchIssues method to get filtered results
 		const searchResult = await jiraClient.searchIssues(jql, {
@@ -1340,12 +1340,12 @@ export async function findNextJiraTask(
 			})
 		);
 
-		log.info(
+		log?.info(
 			`Found ${allTasks.length} tasks ${parentKey ? `for parent ${parentKey}` : 'in total'}`
 		);
 
 		if (allTasks.length === 0) {
-			log.info('No tasks found');
+			log?.info('No tasks found');
 			return {
 				success: true,
 				data: {
@@ -1384,7 +1384,7 @@ export async function findNextJiraTask(
 
 		if (eligibleTasks.length === 0) {
 			const filterInfo = assigneeEmail ? ` assigned to ${assigneeEmail}` : '';
-			log.info(
+			log?.info(
 				`No eligible tasks found${filterInfo} - all tasks are either completed, blocked, in review, epics, or have unsatisfied dependencies`
 			);
 			return {
@@ -1435,7 +1435,7 @@ export async function findNextJiraTask(
 		const nextTaskDetails = await fetchJiraTaskDetails(nextTask.id, true, log);
 
 		// Log the found next task
-		log.info(
+		log?.info(
 			`Found next task: ${nextTask.id} - ${nextTask.title} (${nextTask.priority} priority)`
 		);
 
@@ -1447,7 +1447,7 @@ export async function findNextJiraTask(
 		};
 	} catch (error: unknown) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		log.error(`Error finding next Jira task: ${errorMessage}`);
+		log?.error(`Error finding next Jira task: ${errorMessage}`);
 		return {
 			success: false,
 			error: {
@@ -1510,13 +1510,13 @@ export async function updateJiraIssues(
 			}
 		});
 
-		log.info(`Updating ${issueIdArray.length} Jira issue(s) based on prompt`);
+		log?.info(`Updating ${issueIdArray.length} Jira issue(s) based on prompt`);
 
 		// Build JQL query to get the specific issues by ID
 		const formattedIds = issueIdArray.map((id) => `"${id}"`).join(',');
 		const jql = `issuekey IN (${formattedIds}) ORDER BY issuekey ASC`;
 
-		log.info(`Fetching Jira issues with JQL: ${jql}`);
+		log?.info(`Fetching Jira issues with JQL: ${jql}`);
 
 		// Use jiraClient.searchIssues instead of direct client.get
 		const searchResult = await jiraClient.searchIssues(jql, {
@@ -1531,7 +1531,7 @@ export async function updateJiraIssues(
 
 		const issues = searchResult.data;
 		if (issues.length === 0) {
-			log.info(`No issues found with the specified ID(s)`);
+			log?.info(`No issues found with the specified ID(s)`);
 			return {
 				success: false,
 				error: {
@@ -1553,7 +1553,7 @@ export async function updateJiraIssues(
 			return map;
 		}, {} as Record<string, any>);
 
-		log.info(
+		log?.info(
 			`Found ${tasks.length} issue(s) to update (${Object.values(issueTypeMap).filter((i) => i.isSubtask).length} subtasks)`
 		);
 
@@ -1584,9 +1584,9 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 		if (typeof updates === 'string') {
 			try {
 				updates = JSON.parse(updates);
-				log.info('Successfully parsed string response into JSON');
+				log?.info('Successfully parsed string response into JSON');
 			} catch (parseError: any) {
-				log.error(
+				log?.error(
 					`Failed to parse updates string as JSON: ${parseError.message}`
 				);
 				throw new Error('Failed to parse LLM response into valid JSON');
@@ -1597,19 +1597,19 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 			throw new Error('Failed to generate valid updates, updates: ' + updates);
 		}
 
-		log.info(`Successfully parsed updates for ${updates.length} issue(s)`);
+		log?.info(`Successfully parsed updates for ${updates.length} issue(s)`);
 
 		// Apply the updates to Jira
 		const updateResults = [];
 		for (let i = 0; i < updates.length; i++) {
 			const update = updates[i];
 			if (!update.id) {
-				log.warn('Update is missing id identifier, skipping');
+				log?.warn('Update is missing id identifier, skipping');
 				continue;
 			}
 
 			try {
-				log.info(`Updating Jira issue: ${update.id}`);
+				log?.info(`Updating Jira issue: ${update.id}`);
 
 				const issueInfo = issueTypeMap[update.id];
 				const isSubtask = issueInfo?.isSubtask || false;
@@ -1621,7 +1621,7 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 						log
 					});
 					if (!fullIssueResponse.success) {
-						log.warn(
+						log?.warn(
 							`Failed to fetch full issue details: ${fullIssueResponse.error?.message}`
 						);
 						continue;
@@ -1630,7 +1630,7 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 					const parentKey = fullIssue.parentKey || issueInfo.parentKey;
 
 					if (!parentKey) {
-						log.warn(`Subtask ${update.id} is missing parent relationship`);
+						log?.warn(`Subtask ${update.id} is missing parent relationship`);
 					}
 				}
 
@@ -1675,20 +1675,20 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 								fields: requestData.fields
 							});
 
-							log.info(
+							log?.info(
 								`Updated issue ${update.id} fields: ${Object.keys(requestData.fields).join(', ')}`
 							);
 						} else {
-							log.info(`No fields to update for issue ${update.id}`);
+							log?.info(`No fields to update for issue ${update.id}`);
 						}
 					} catch (updateError: unknown) {
 						// Log detailed error information
 						const errorMessage = updateError instanceof Error ? updateError.message : String(updateError);
-						log.error(`Error updating issue: ${errorMessage}`);
+						log?.error(`Error updating issue: ${errorMessage}`);
 
 						const hasResponse = updateError && typeof updateError === 'object' && 'response' in updateError;
 						if (hasResponse && (updateError as any).response && (updateError as any).response.data) {
-							log.error(
+							log?.error(
 								`API error details: ${JSON.stringify((updateError as any).response.data)}`
 							);
 
@@ -1696,7 +1696,7 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 							if ((updateError as any).response.data.errors) {
 								Object.entries((updateError as any).response.data.errors).forEach(
 									([field, error]) => {
-										log.error(`Field error - ${field}: ${String(error)}`);
+										log?.error(`Field error - ${field}: ${String(error)}`);
 
 										// Remove problematic fields
 										delete requestData.fields[field];
@@ -1705,12 +1705,12 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 
 								// Retry with remaining fields if any
 								if (Object.keys(requestData.fields).length > 0) {
-									log.info(`Retrying update without problematic fields...`);
+									log?.info(`Retrying update without problematic fields...`);
 									const client = jiraClient.getClient();
 									await client.put(`/rest/api/3/issue/${update.id}`, {
 										fields: requestData.fields
 									});
-									log.info(
+									log?.info(
 										`Updated issue ${update.id} with remaining fields: ${Object.keys(requestData.fields).join(', ')}`
 									);
 								}
@@ -1725,7 +1725,7 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 				);
 
 				if (!originalTask) {
-					log.error(`Issue ${update.id} not found in tasks array`);
+					log?.error(`Issue ${update.id} not found in tasks array`);
 					continue;
 				}
 
@@ -1778,7 +1778,7 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 				});
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
-				log.error(`Failed to update issue ${update.id}: ${errorMessage}`);
+				log?.error(`Failed to update issue ${update.id}: ${errorMessage}`);
 				updateResults.push({
 					key: update.id || 'unknown',
 					success: false,
@@ -1826,7 +1826,7 @@ The changes described in the prompt should be applied to ALL tasks in the list. 
 		}
 	} catch (error: unknown) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		log.error(`Failed to update Jira issue(s): ${errorMessage}`);
+		log?.error(`Failed to update Jira issue(s): ${errorMessage}`);
 		return {
 			success: false,
 			error: {
@@ -2075,7 +2075,7 @@ export async function removeJiraSubtask(subtaskId: string, convert: boolean = fa
 			};
 		}
 
-		log.info(`Removing Jira subtask ${subtaskId} (convert: ${convert})`);
+		log?.info(`Removing Jira subtask ${subtaskId} (convert: ${convert})`);
 
 		// First, fetch the subtask to verify it exists and is actually a subtask
 		const subtaskResult = await jiraClient.fetchIssue(subtaskId, { log });
@@ -2106,18 +2106,18 @@ export async function removeJiraSubtask(subtaskId: string, convert: boolean = fa
 		// Get the parent key
 		const parentKey = subtask.parentKey;
 		if (!parentKey) {
-			log.warn(`Subtask ${subtaskId} does not have a parent reference`);
+			log?.warn(`Subtask ${subtaskId} does not have a parent reference`);
 		}
 
 		// Handle conversion to standalone task
 		if (convert) {
-			log.info(`Converting subtask ${subtaskId} to standalone task...`);
+			log?.info(`Converting subtask ${subtaskId} to standalone task...`);
 
 			try {
 				// If the subtask has a parent, fetch the parent to get its epic link (if any)
 				let epicKey = null;
 				if (parentKey) {
-					log.info(
+					log?.info(
 						`Fetching parent task ${parentKey} to check for epic relationship...`
 					);
 					const parentResult = await jiraClient.fetchIssue(parentKey, { log });
@@ -2127,14 +2127,14 @@ export async function removeJiraSubtask(subtaskId: string, convert: boolean = fa
 
 						// Check if parent has an epic link by looking at issue links
 						if (parent.parentKey) {
-							log.info(
+							log?.info(
 								`Parent task has ${parent.dependencies.length} dependencies/links`
 							);
 							epicKey = parent.parentKey;
-							log.info(`Found potential epic relationship: ${epicKey}`);
+							log?.info(`Found potential epic relationship: ${epicKey}`);
 						}
 					} else {
-						log.warn(
+						log?.warn(
 							`Could not fetch parent task: ${parentResult.error?.message || 'Unknown error'}`
 						);
 					}
@@ -2164,14 +2164,14 @@ export async function removeJiraSubtask(subtaskId: string, convert: boolean = fa
 				}
 
 				const newTaskKey = createResult.data.key;
-				log.info(`Created new task ${newTaskKey} from subtask ${subtaskId}`);
+				log?.info(`Created new task ${newTaskKey} from subtask ${subtaskId}`);
 
 				// After successful creation, get a client for direct API calls if needed
 				const client = jiraClient.getClient();
 
 				// Delete the original subtask
 				await client.delete(`/rest/api/3/issue/${subtaskId}`);
-				log.info(`Deleted original subtask ${subtaskId}`);
+				log?.info(`Deleted original subtask ${subtaskId}`);
 
 				// Return the result with the new task info
 				return {
@@ -2191,7 +2191,7 @@ export async function removeJiraSubtask(subtaskId: string, convert: boolean = fa
 					}
 				};
 			} catch (error: any) {
-				log.error(`Error converting subtask to task: ${error.message}`);
+				log?.error(`Error converting subtask to task: ${error.message}`);
 				return {
 					success: false,
 					error: {
@@ -2202,13 +2202,13 @@ export async function removeJiraSubtask(subtaskId: string, convert: boolean = fa
 			}
 		} else {
 			// Simple deletion
-			log.info(`Deleting subtask ${subtaskId}...`);
+			log?.info(`Deleting subtask ${subtaskId}...`);
 
 			try {
 				const client = jiraClient.getClient();
 				await client.delete(`/rest/api/3/issue/${subtaskId}`);
 
-				log.info(`Successfully deleted subtask ${subtaskId}`);
+				log?.info(`Successfully deleted subtask ${subtaskId}`);
 				return {
 					success: true,
 					data: {
@@ -2217,7 +2217,7 @@ export async function removeJiraSubtask(subtaskId: string, convert: boolean = fa
 					}
 				};
 			} catch (error: any) {
-				log.error(`Error deleting subtask: ${error.message}`);
+				log?.error(`Error deleting subtask: ${error.message}`);
 				return {
 					success: false,
 					error: {
@@ -2228,7 +2228,7 @@ export async function removeJiraSubtask(subtaskId: string, convert: boolean = fa
 			}
 		}
 	} catch (error: any) {
-		log.error(`Error in removeJiraSubtask: ${error.message}`);
+		log?.error(`Error in removeJiraSubtask: ${error.message}`);
 		return {
 			success: false,
 			error: {
@@ -2260,7 +2260,7 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 			};
 		}
 
-		log.info(`Removing Jira task ${taskId}`);
+		log?.info(`Removing Jira task ${taskId}`);
 
 		// First, fetch the task to verify it exists and to get its details
 		const taskResult = await jiraClient.fetchIssue(taskId, { log });
@@ -2280,7 +2280,7 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 
 		// If it's a subtask, delegate to removeJiraSubtask function
 		if (isSubtask) {
-			log.info(`Task ${taskId} is a subtask. Using removeJiraSubtask instead.`);
+			log?.info(`Task ${taskId} is a subtask. Using removeJiraSubtask instead.`);
 			return await removeJiraSubtask(taskId, false, log, options);
 		}
 
@@ -2291,13 +2291,13 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 			if (subtasksResult.success && subtasksResult.tasks) {
 				subtasks = subtasksResult.tasks;
 				if (subtasks.length > 0) {
-					log.info(
+					log?.info(
 						`Task ${taskId} has ${subtasks.length} subtasks that need to be removed first`
 					);
 				}
 			}
 		} catch (error: any) {
-			log.warn(`Error fetching subtasks for ${taskId}: ${error.message}`);
+			log?.warn(`Error fetching subtasks for ${taskId}: ${error.message}`);
 			// Continue without subtasks information - not fatal
 		}
 
@@ -2309,13 +2309,13 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 		let subtasksRemoved = 0;
 
 		if (subtasks.length > 0) {
-			log.info(
+			log?.info(
 				`Deleting ${subtasks.length} subtasks before removing parent task ${taskId}`
 			);
 
 			for (const subtask of subtasks) {
 				try {
-					log.info(`Removing subtask ${subtask.id}...`);
+					log?.info(`Removing subtask ${subtask.id}...`);
 					const subtaskResult = await removeJiraSubtask(subtask.id, false, log, options);
 
 					if (subtaskResult.success) {
@@ -2325,14 +2325,14 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 							success: true,
 							message: `Successfully removed subtask ${subtask.id}`
 						});
-						log.info(`Successfully removed subtask ${subtask.id}`);
+						log?.info(`Successfully removed subtask ${subtask.id}`);
 					} else {
 						subtaskResults.push({
 							id: subtask.id,
 							success: false,
 							error: subtaskResult.error?.message || 'Unknown error'
 						});
-						log.warn(
+						log?.warn(
 							`Failed to remove subtask ${subtask.id}: ${subtaskResult.error?.message || 'Unknown error'}`
 						);
 					}
@@ -2342,13 +2342,13 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 						success: false,
 						error: subtaskError.message
 					});
-					log.error(
+					log?.error(
 						`Error removing subtask ${subtask.id}: ${subtaskError.message}`
 					);
 				}
 			}
 
-			log.info(`Removed ${subtasksRemoved} out of ${subtasks.length} subtasks`);
+			log?.info(`Removed ${subtasksRemoved} out of ${subtasks.length} subtasks`);
 
 			// Re-fetch subtasks to see if any are still remaining
 			try {
@@ -2363,19 +2363,19 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 					remainingSubtasksResult.tasks.length > 0
 				) {
 					const remainingCount = remainingSubtasksResult.tasks.length;
-					log.warn(
+					log?.warn(
 						`There are still ${remainingCount} subtasks remaining that could not be deleted`
 					);
 				}
 			} catch (error: any) {
-				log.warn(`Could not verify remaining subtasks: ${error.message}`);
+				log?.warn(`Could not verify remaining subtasks: ${error.message}`);
 			}
 		}
 
 		// Now attempt to delete the parent task
 		try {
 			await client.delete(`/rest/api/3/issue/${taskId}`);
-			log.info(`Successfully deleted task ${taskId}`);
+			log?.info(`Successfully deleted task ${taskId}`);
 
 			return {
 				success: true,
@@ -2387,7 +2387,7 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 				}
 			};
 		} catch (error: any) {
-			log.error(`Error deleting parent task: ${error.message}`);
+			log?.error(`Error deleting parent task: ${error.message}`);
 
 			// Check if it's a permission error
 			if (error.response && error.response.status === 403) {
@@ -2429,7 +2429,7 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 			};
 		}
 	} catch (error: any) {
-		log.error(`Error in removeJiraTask: ${error.message}`);
+		log?.error(`Error in removeJiraTask: ${error.message}`);
 		return {
 			success: false,
 			error: {
@@ -2475,7 +2475,7 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 // 			};
 // 		}
 
-// 		log.info(
+// 		log?.info(
 // 			`Analyzing complexity of Jira tasks ${parentKey ? `for parent ${parentKey}` : 'in project'}`
 // 		);
 
@@ -2496,7 +2496,7 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 // 			};
 // 		}
 
-// 		log.info(`Found ${tasksResult.tasks.length} tasks to analyze`);
+// 		log?.info(`Found ${tasksResult.tasks.length} tasks to analyze`);
 
 // 		// Filter out tasks with status done/cancelled/deferred
 // 		const activeStatuses = ['pending', 'blocked', 'in-progress'];
@@ -2515,7 +2515,7 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 // 			};
 // 		}
 
-// 		log.info(
+// 		log?.info(
 // 			`Analyzing ${filteredTasks.length} active tasks (skipping ${tasksResult.tasks.length - filteredTasks.length} completed/cancelled/deferred tasks)`
 // 		);
 
@@ -2545,11 +2545,11 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 
 // 		// Create a logger wrapper that matches the expected mcpLog interface
 // 		const logWrapper = {
-// 			info: (message: string) => log.info(message),
-// 			warn: (message: string) => log.warn(message),
-// 			error: (message: string) => log.error(message),
-// 			debug: (message: string) => log.debug && log.debug(message),
-// 			success: (message: string) => log.info(message) // Map success to info
+// 			info: (message: string) => log?.info(message),
+// 			warn: (message: string) => log?.warn(message),
+// 			error: (message: string) => log?.error(message),
+// 			debug: (message: string) => log.debug && log?.debug(message),
+// 			success: (message: string) => log?.info(message) // Map success to info
 // 		};
 
 // 		// Call the core function with the prepared data
@@ -2590,7 +2590,7 @@ export async function removeJiraTask(taskId: string, log: Logger, options: Fetch
 // 			}
 // 		};
 // 	} catch (error: any) {
-// 		log.error(`Error analyzing Jira task complexity: ${error.message}`);
+// 		log?.error(`Error analyzing Jira task complexity: ${error.message}`);
 // 		return {
 // 			success: false,
 // 			error: {
@@ -2919,7 +2919,7 @@ export function deduplicateTickets(subtasks: any[], relatedContext: any, log: Lo
 	const addTicketWithRelationship = (ticket: any, relationship: any) => {
 		const ticketId = ticket.jiraKey || ticket.id;
 		if (!ticketId) {
-			log.warn('Ticket found without ID, skipping');
+			log?.warn('Ticket found without ID, skipping');
 			return;
 		}
 
@@ -3031,7 +3031,7 @@ export function deduplicateTickets(subtasks: any[], relatedContext: any, log: Lo
 				depth: 1
 			});
 		});
-		log.info(`Processed ${subtasks.length} subtasks`);
+		log?.info(`Processed ${subtasks.length} subtasks`);
 	}
 
 	// Process related context tickets
@@ -3057,7 +3057,7 @@ export function deduplicateTickets(subtasks: any[], relatedContext: any, log: Lo
 				});
 			}
 		});
-		log.info(
+		log?.info(
 			`Processed ${relatedContext.tickets.length} related context tickets`
 		);
 	}
@@ -3087,7 +3087,7 @@ export function deduplicateTickets(subtasks: any[], relatedContext: any, log: Lo
 		implementationInsights: []
 	};
 
-	log.info(
+	log?.info(
 		`Deduplicated to ${relationshipSummary.totalUnique} unique tickets from ${(subtasks?.length || 0) + (relatedContext?.tickets?.length || 0)} total`
 	);
 
@@ -3140,7 +3140,7 @@ export function extractAndRemoveContextImages(relatedContext: any, log: Logger):
 
 			// Remove the attachmentImages array from the nested ticket object
 			delete contextTicketWrapper.ticket.attachmentImages;
-			log.info(
+			log?.info(
 				`Extracted ${imageCount} images from context ticket ${contextTicketWrapper.ticket.key}`
 			);
 		}
@@ -3166,7 +3166,7 @@ export function extractAndRemoveContextImages(relatedContext: any, log: Logger):
 
 			// Remove the attachmentImages array from the wrapper
 			delete contextTicketWrapper.attachmentImages;
-			log.info(
+			log?.info(
 				`Extracted ${imageCount} images from context ticket wrapper ${contextTicketWrapper.key}`
 			);
 		}
@@ -3195,14 +3195,14 @@ export async function addContextToTask(
 	bitbucketConfig?: any
 ): Promise<any> {
 	try {
-		log.info(`Starting addContextToTask for ticket ${ticketId}`);
+		log?.info(`Starting addContextToTask for ticket ${ticketId}`);
 		
 
 		// Check if context services are available
 		const jiraClient = new JiraClient(jiraConfig);
 		
 		// Log detailed Jira client state
-		log.info('Created JiraClient in addContextToTask:', {
+		log?.info('Created JiraClient in addContextToTask:', {
 			enabled: jiraClient.enabled,
 			hasClient: !!jiraClient.client,
 			error: jiraClient.error,
@@ -3221,17 +3221,17 @@ export async function addContextToTask(
 		});
 		
 		if (!jiraClient.isReady()) {
-			log.error('Jira client not ready in addContextToTask, skipping context');
+			log?.error('Jira client not ready in addContextToTask, skipping context');
 			const validation = jiraClient.validateConfig(log);
-			log.error('Jira validation result:', validation);
+			log?.error('Jira validation result:', validation);
 			return;
 		}
 
 		const bitbucketClient = new BitbucketClient(bitbucketConfig);
 		if (!bitbucketClient.enabled) {
-			log.info('Bitbucket client not enabled in addContextToTask, skipping context');
+			log?.info('Bitbucket client not enabled in addContextToTask, skipping context');
 			const validation = bitbucketClient.validateConfig(log);
-			log.info('Bitbucket validation result:', validation);
+			log?.info('Bitbucket validation result:', validation);
 			return;
 		}
 
@@ -3244,7 +3244,7 @@ export async function addContextToTask(
 			prMatcher
 		);
 
-		log.info(`Fetching context for ticket ${ticketId}...`);
+		log?.info(`Fetching context for ticket ${ticketId}...`);
 
 		// Extract repository information from ticket's development info if available
 		let detectedRepositories: string[] = [];
@@ -3269,13 +3269,13 @@ export async function addContextToTask(
 						.filter((repo, index, arr) => arr.indexOf(repo) === index); // Remove duplicates
 
 					detectedRepositories = repoNames;
-					log.info(
+					log?.info(
 						`Detected repositories from development info: ${detectedRepositories.join(', ')}`
 					);
 				}
 			} catch (devError: unknown) {
 				const errorMessage = devError instanceof Error ? devError.message : String(devError);
-				log.warn(
+				log?.warn(
 					`Could not detect repositories from development info: ${errorMessage}`
 				);
 			}
@@ -3288,11 +3288,11 @@ export async function addContextToTask(
 			maxRelated: maxRelatedTickets,
 			detectedRepositories: detectedRepositories, // Pass detected repos for smarter PR matching
 			log: {
-				info: (msg) => log.info(msg),
-				warn: (msg) => log.warn(msg),
-				error: (msg) => log.error(msg),
+				info: (msg) => log?.info(msg),
+				warn: (msg) => log?.warn(msg),
+				error: (msg) => log?.error(msg),
 				debug: (msg) =>
-					log.debug ? log.debug(msg) : log.info(`[DEBUG] ${msg}`) // Fallback for debug
+					log.debug ? log?.debug(msg) : log?.info(`[DEBUG] ${msg}`) // Fallback for debug
 			}
 		});
 
@@ -3304,7 +3304,7 @@ export async function addContextToTask(
 		// CRITICAL FIX: Fetch main ticket PR data BEFORE context aggregation and deduplication
 		// This ensures the main ticket's PR data is available during deduplication
 		if (!ticket.pullRequests || ticket.pullRequests.length === 0) {
-			log.info(
+			log?.info(
 				`Main ticket ${ticketId} has no PR data, fetching from development status...`
 			);
 
@@ -3319,29 +3319,29 @@ export async function addContextToTask(
 				) {
 					// The PRs are already enhanced by getJiraDevStatus
 					ticket.pullRequests = mainTicketPRs.data;
-					log.info(
+					log?.info(
 						`Added ${mainTicketPRs.data.length} PRs to main ticket ${ticketId} BEFORE deduplication`
 					);
 
 											// Debug log PR details
 						mainTicketPRs.data.forEach((pr: any) => {
-							log.info(
+							log?.info(
 								`Main ticket PR ${pr.id}: has diffStat=${!!pr.diffStat}, has filesChanged=${!!pr.filesChanged}`
 							);
 							if (pr.diffStat) {
-								log.info(
+								log?.info(
 									`  - Lines added: ${pr.diffStat.linesAdded}, Lines removed: ${pr.diffStat.linesRemoved}`
 								);
 							}
 							if (pr.filesChanged && Array.isArray(pr.filesChanged)) {
-								log.info(`  - Files changed: ${pr.filesChanged.length}`);
+								log?.info(`  - Files changed: ${pr.filesChanged.length}`);
 							} else if (typeof pr.filesChanged === 'number') {
-								log.info(`  - Files changed: ${pr.filesChanged}`);
+								log?.info(`  - Files changed: ${pr.filesChanged}`);
 							}
 						});
 				}
 			} catch (prError: any) {
-				log.warn(`Failed to fetch PR data for main ticket: ${prError.message}`);
+				log?.warn(`Failed to fetch PR data for main ticket: ${prError.message}`);
 			}
 		}
 
@@ -3375,15 +3375,15 @@ export async function addContextToTask(
 			// Store context images for later use in the response
 			if (contextImages.length > 0) {
 				ticket._contextImages = contextImages;
-				log.info(
+				log?.info(
 					`Extracted ${contextImages.length} images from context tickets`
 				);
 			}
 		} else {
-			log.info('No context returned or no relatedContext property');
+			log?.info('No context returned or no relatedContext property');
 		}
 	} catch (error: any) {
-		log.warn(`Context retrieval failed: ${error.message}`);
+		log?.warn(`Context retrieval failed: ${error.message}`);
 		// Don't throw - context failure shouldn't break main functionality
 	}
 }

@@ -1,0 +1,45 @@
+---
+alwaysApply: true
+---
+
+## Error Handling & Logging Patterns
+### Standard Error Handling Pattern
+```typescript
+try {
+    // Get configurations using the shared config hook
+    const { jiraConfig, bitbucketConfig } = useSessionConfigs(getSessionConfig, logger);
+    
+    // Validate inputs
+    if (!args.param) {
+        logger.error('Required parameter missing');
+        return createErrorResponse('Required parameter is missing');
+    }
+    
+    // API calls or business logic
+    const result = await someApiCall(args, { jiraConfig });
+    
+    if (!result.success) {
+        logger.error(`Operation failed: ${result.error?.message || 'Unknown error'}`);
+        return createErrorResponse(`Failed to complete operation: ${result.error?.message || 'Unknown error'}`);
+    }
+    
+    logger.info('Operation completed successfully', { context: args });
+    return { content: [{ type: 'text' as const, text: 'Success message' }] };
+} catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    logger.error(`Error in tool-name tool: ${errorMessage}\n${errorStack}`);
+    return createErrorResponse(`Failed to complete operation: ${errorMessage}`);
+}
+```
+
+### Logging Rules
+1. **Use structured logging** with Winston logger from `src/utils/logger.ts`
+2. **Include context** in all log messages (operation, parameters)
+3. **Log levels**: 
+   - `error`: For failures and exceptions with stack traces
+   - `warn`: For recoverable issues
+   - `info`: For successful operations and important events
+   - `debug`: For detailed debugging information
+4. **Don't log sensitive data** (tokens, passwords, personal info)
+5. **Never use console.log** - MCP servers don't support console logs

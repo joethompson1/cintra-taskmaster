@@ -5,10 +5,10 @@
 
 import request from 'supertest';
 import * as dotenv from 'dotenv';
-import { logger } from '../utils/logger';
+import { logger } from '../../utils/logger';
 // @ts-ignore
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
-import { setupMcpServer } from '../server/mcpServer';
+import { setupMcpServer } from '../../server/mcpServer';
 
 // Load environment variables
 dotenv.config();
@@ -174,7 +174,7 @@ describe('Update Task Integration Test', () => {
                 acceptanceCriteria: `- [ ] First acceptance criterion with **Framework**: React Native
 - [ ] Second criterion with *emphasis*
 - [ ] Third criterion with code \`example\``,
-                details: `## Implementation Steps
+                implementationDetails: `## Implementation Steps
 - **Framework**: React Native
 - **Architecture**: Clean architecture
 - **Database**: PostgreSQL`,

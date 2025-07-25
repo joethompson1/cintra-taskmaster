@@ -31,7 +31,7 @@ export function createMCPOAuthRouter(): Router {
      * OAuth Discovery Endpoint
      * Returns OAuth configuration for MCP clients
      */
-    const oauthDiscoveryHandler = (req: Request, res: Response) => {
+    const oauthDiscoveryHandler = (req: Request, res: Response): void => {
         const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
         
         res.json({
@@ -94,12 +94,11 @@ export function createMCPOAuthRouter(): Router {
      * Initiates the OAuth flow by redirecting to Atlassian
      */
     router.get('/auth/authorize', (req: Request, res: Response) => {
-        const { 
+        const {
             client_id,
             redirect_uri,
             response_type,
             state,
-            scope,
             code_challenge,
             code_challenge_method
         } = req.query;
@@ -183,10 +182,10 @@ export function createMCPOAuthRouter(): Router {
             // Create a temporary authorization code that contains the Atlassian tokens
             // This code will be exchanged for a JWT in the token endpoint
             const codePayload = {
-                atlassianAccessToken: result.tokens.accessToken,
+                atlassianAccessToken: result.tokens.accessToken || '',
                 atlassianRefreshToken: result.tokens.refreshToken,
                 cloudId: result.tokens.cloudId,
-                userId: result.tokens.userId,
+                userId: result.tokens.userId || `oauth_user_${Date.now()}`,
                 sessionId: result.sessionId,
                 codeChallenge: flowState.mcpCodeChallenge,
                 codeChallengeMethod: flowState.mcpCodeChallengeMethod,
@@ -448,7 +447,7 @@ export function createMCPOAuthRouter(): Router {
      * Revokes access or refresh tokens
      */
     router.post('/auth/revoke', async (req: Request, res: Response) => {
-        const { token, token_type_hint, client_id, client_secret } = req.body;
+        const { token, client_id, client_secret } = req.body;
 
         // Validate client credentials
         const configuredClientId = process.env.MCP_CLIENT_ID || process.env.ATLASSIAN_CLIENT_ID;

@@ -1,0 +1,150 @@
+---
+alwaysApply: true
+---
+
+
+# Cintra-Taskmaster Implementation Rules
+
+**Don't add anything to git** unless specifically asked by the user
+**Don't run the mcp server** this will already be running and requires the user to rebuild and restart the server
+**Don't call Cintra Taskmaster tools directly after code changes** the user needs to restart the server before code changes take effect.
+
+## Project Architecture & Code Organization
+
+### Directory Structure Rules
+- **`src/server/tools/`**: All MCP tool implementations go here. Each tool should be in its own file named after the tool (e.g., `get-task.ts`, `add-task.ts`)
+- **`src/utils/jira/`**: Jira-specific utilities, client code, and business logic
+- **`src/utils/bitbucket/`**: Bitbucket-specific utilities and client code  
+- **`src/middleware/`**: Express middleware for OAuth, authentication, and request processing
+- **`src/types/`**: TypeScript type definitions. Use `jira.ts` for Jira-specific types, `index.ts` for general types
+- **`src/__tests__/`**: All test files. Use `unit/` for unit tests, `integration/` for E2E tests
+
+### File Naming Conventions
+- Use kebab-case for file names (e.g., `add-jira-comment.ts`, `oauth-endpoints.ts`)
+- Use PascalCase for TypeScript interfaces and types
+- Use camelCase for functions and variables
+- Tool files should match their MCP tool name exactly
+
+## MCP Tool Implementation Patterns
+### Tool Registration Pattern
+```typescript
+import { z } from 'zod';
+// @ts-ignore
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
+
+export function registerToolName(server: McpServer, getSessionConfig?: () => any): void {
+    server.registerTool('tool_name', {
+        title: 'Tool Title',
+        description: 'Clear description of what the tool does',
+        inputSchema: {
+            param1: z.string().describe('Parameter description'),
+            param2: z.boolean().optional().default(false).describe('Optional parameter'),
+            param3: z.number().min(1).max(10).optional().describe('Optional number with validation')
+        }
+    }, async (args: {
+        param1: string;
+        param2?: boolean;
+        param3?: number;
+    }) => {
+        // Tool implementation
+    });
+}
+```
+
+### Tool Implementation Rules
+1. **Use Zod for schema validation** - Import and use Zod for all inputSchema definitions
+2. **Type the args parameter** - Always provide proper TypeScript types for the args parameter
+3. **Use proper error handling** with try-catch blocks and meaningful error messages
+4. **Return structured responses** with `content` array containing `type: "text"` or `type: "image"` objects
+5. **Log all tool executions** with appropriate log levels (info for success, error for failures)
+6. **Use the configuration context** via `useSessionConfigs()` for both OAuth and header-based auth
+7. **Keep tools focused** - each tool should do one thing well
+8. **Use the logging service** - never use console.log, always use the logger from `src/utils/logger.ts`
+9. **Use createErrorResponse utility** - always use `createErrorResponse()` for error responses
+
+### Tool Response Format
+```typescript
+// Success response with text
+return {
+    content: [
+        {
+            type: 'text' as const,
+            text: 'Human-readable response describing what was done'
+        }
+    ]
+};
+
+// Success response with images
+return {
+    content: [
+        {
+            type: 'text' as const,
+            text: 'Description of the content'
+        },
+        {
+            type: 'image' as const,
+            data: 'base64-encoded-image-data',
+            mimeType: 'image/png'
+        }
+    ]
+};
+
+// Error response
+return createErrorResponse('Error message describing what went wrong');
+```
+
+## Authentication Implementation
+### OAuth Implementation Rules
+1. **Stateless design**: Never store OAuth tokens in external storage (Redis, DB, etc.)
+2. **JWT-based**: All OAuth state goes in JWTs for serverless compatibility
+3. **Automatic refresh**: Handle token refresh transparently in the client utilities
+4. **Security**: Always validate JWT signatures and expiration
+
+
+## TypeScript Usage
+### Type Safety Rules
+1. **Strict TypeScript**: Use strict mode, no `any` types unless absolutely necessary
+2. **Define interfaces** for all external API responses and internal data structures
+3. **Use proper error types** - create custom error classes when needed
+4. **Export types** from appropriate type files for reuse
+5. **Generic constraints** when working with dynamic data
+6. **Look for existing types** before creating new ones (`src/types`)
+
+## API Client Patterns
+### Jira Client Usage
+1. **Always use the centralized JiraClient** from `src/utils/jira/jira-client.ts`
+2. **Handle API errors gracefully** - Jira returns different error formats
+3. **Use proper HTTP methods** - GET for reads, POST for creates, PUT for updates
+4. **Include proper headers** - Content-Type, Accept, Authorization
+
+### Bitbucket Integration
+1. **Optional dependency** - tools should work even if Bitbucket is not configured
+2. **Link PRs to Jira tickets** using the context aggregator
+3. **Handle workspace-based URLs** properly
+
+## Security & Validation
+### Input Validation Rules
+1. **Validate all inputs** at the MCP tool level using Zod schemas
+2. **Sanitize user inputs** before using in API calls or logging
+3. **Validate Jira keys** format (PROJECT-123 pattern)
+4. **Check permissions** before performing operations
+5. **Rate limiting awareness** - don't abuse external APIs
+
+
+
+
+## Performance & Scalability
+### Performance Rules
+1. **Stateless design** - no server-side session storage
+2. **Efficient API usage** - batch operations when possible
+3. **Proper error boundaries** - don't let one operation failure crash others
+4. **Reasonable timeouts** for external API calls
+5. **Connection pooling** for HTTP clients
+
+
+## Utility Functions
+### Required Utility Functions
+1. **`createErrorResponse(message: string)`** - Always use for error responses
+2. **`useSessionConfigs(getSessionConfig, logger)`** - Always use for configuration
+3. **Logger from `src/utils/logger.ts`** - Always use for logging
+4. **Zod for validation** - Always import and use for inputSchema
