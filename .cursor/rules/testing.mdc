@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+## Testing Requirements
+### Unit Testing Rules
+1. **Test all tools** with both success and failure scenarios
+2. **Mock external dependencies** (Jira API, Bitbucket API)
+3. **Test authentication scenarios** - both OAuth and header-based
+4. **Validate input/output schemas** in tests
+5. **Use meaningful test descriptions** that explain the scenario
+
+### Integration Testing Safety Rules
+1. **ALWAYS use unique test identifiers** with timestamps to prevent collision with real tickets
+2. **Use TEST_ prefixes** in all test ticket titles and descriptions
+3. **Implement emergency cleanup functions** to remove test data if tests fail
+4. **Track all created test IDs** for comprehensive cleanup
+5. **Use descriptive test descriptions** that make it clear they are test tickets
+6. Reference README-E2E.md file when working with the e2e-integration.test.ts
+
+
+### E2E Testing Rules
+1. **E2E tests** should cover complete workflows
+2. **Test OAuth flow** end-to-end including token refresh
+3. **Test error scenarios** like network failures, API errors
+4. **Always clean up test data** after tests complete
+5. **Use safety measures** to prevent affecting real work tickets
