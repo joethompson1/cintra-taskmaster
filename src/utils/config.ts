@@ -4,9 +4,11 @@ export interface SessionConfig {
     JIRA_EMAIL?: string;
     JIRA_API_TOKEN?: string;
     JIRA_PROJECT?: string;
+    JIRA_API_URL?: string;
     BITBUCKET_EMAIL?: string;
     BITBUCKET_API_TOKEN?: string;
-    [key: string]: string | undefined;
+    IS_OAUTH?: string | boolean;
+    [key: string]: string | boolean | undefined;
 }
 
 export interface JiraConfig {
@@ -55,11 +57,11 @@ export function useSessionConfigs(
 
     // Build Jira configuration
     const jiraConfig: JiraConfig = includeJira ? {
-        baseUrl: sessionConfig.JIRA_API_URL || process.env.JIRA_API_URL,
-        email: sessionConfig.JIRA_EMAIL,
-        apiToken: sessionConfig.JIRA_API_TOKEN,
-        project: sessionConfig.JIRA_PROJECT,
-        isOAuth: sessionConfig.IS_OAUTH === 'true',
+        baseUrl: (sessionConfig.JIRA_API_URL as string) || process.env.JIRA_API_URL,
+        email: sessionConfig.JIRA_EMAIL as string,
+        apiToken: sessionConfig.JIRA_API_TOKEN as string,
+        project: sessionConfig.JIRA_PROJECT as string,
+        isOAuth: sessionConfig.IS_OAUTH === 'true' || sessionConfig.IS_OAUTH === true,
     } : {};
 
     // Build Bitbucket configuration
