@@ -1,0 +1,173 @@
+name: Deploy to Production
+
+on:
+  workflow_run:
+    workflows: ["Build and Push"]
+    types:
+      - completed
+    branches:
+      - main
+
+env:
+  AWS_REGION: ${{ vars.AWS_DEFAULT_REGION || 'us-east-1' }}
+  ECR_REPOSITORY: cintra-taskmaster
+  LAMBDA_FUNCTION_NAME: taskmaster-mcp
+
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+
+jobs:
+  deploy-to-production:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && vars.DEPLOY_ENABLED != 'false'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-info-${{ github.sha }}
+          path: build-info/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Load build information
+        id: build-info
+        run: |
+          if [ -f "build-info/image-uri.txt" ]; then
+            IMAGE_URI=$(cat build-info/image-uri.txt)
+            COMMIT_SHA=$(cat build-info/commit-sha.txt)
+            BUILD_ID=$(cat build-info/build-id.txt)
+            
+            echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+            echo "commit-sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+            echo "build-id=$BUILD_ID" >> $GITHUB_OUTPUT
+            
+            echo "Deploying image: $IMAGE_URI"
+            echo "Commit SHA: $COMMIT_SHA"
+            echo "Build ID: $BUILD_ID"
+          else
+            echo "❌ Build artifact not found!"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+          role-session-name: github-actions-cintra-taskmaster-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update Lambda function
+        run: |
+          echo "🚀 Updating Lambda function with new container image..."
+          
+          # Update Lambda function with new container image
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --image-uri ${{ steps.build-info.outputs.image-uri }} \
+            --output json > update-result.json
+          
+          # Display the update result
+          cat update-result.json
+          
+          echo "📋 Lambda function update initiated"
+
+      - name: Wait for function update
+        run: |
+          echo "⏳ Waiting for Lambda function to update..."
+          
+          # Wait for the function update to complete
+          timeout 300 aws lambda wait function-updated \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} || {
+            echo "❌ Function update timed out after 5 minutes"
+            exit 1
+          }
+          
+          echo "✅ Function update completed!"
+
+      - name: Verify deployment
+        run: |
+          echo "🔍 Verifying Lambda deployment..."
+          
+          # Get current function configuration
+          FUNCTION_CONFIG=$(aws lambda get-function \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --output json)
+          
+          # Extract key information
+          STATE=$(echo "$FUNCTION_CONFIG" | jq -r '.Configuration.State')
+          LAST_UPDATE_STATUS=$(echo "$FUNCTION_CONFIG" | jq -r '.Configuration.LastUpdateStatus')
+          CODE_SHA=$(echo "$FUNCTION_CONFIG" | jq -r '.Configuration.CodeSha256')
+          IMAGE_URI=$(echo "$FUNCTION_CONFIG" | jq -r '.Code.ImageUri')
+          
+          echo "📊 Function State: $STATE"
+          echo "📊 Last Update Status: $LAST_UPDATE_STATUS"
+          echo "📊 Current Image: $IMAGE_URI"
+          echo "📊 Code SHA256: $CODE_SHA"
+          
+          if [ "$STATE" = "Active" ] && [ "$LAST_UPDATE_STATUS" = "Successful" ]; then
+            echo "✅ Deployment verification successful!"
+          else
+            echo "❌ Deployment verification failed!"
+            echo "Expected State: Active, Got: $STATE"
+            echo "Expected Update Status: Successful, Got: $LAST_UPDATE_STATUS"
+            exit 1
+          fi
+
+      - name: Test API endpoint
+        run: |
+          echo "🌐 Testing API Gateway endpoint..."
+          
+          # Test the health endpoint if available
+          API_URL="https://taskmaster-mcp.dev.cintra.cloud"
+          
+          # Wait a moment for API Gateway to refresh
+          sleep 10
+          
+          # Test with curl (allow for some startup time)
+          for i in {1..3}; do
+            echo "Attempt $i: Testing $API_URL/health"
+            if curl -f -s --max-time 30 "$API_URL/health" > /dev/null; then
+              echo "✅ API endpoint is responding!"
+              break
+            elif [ $i -eq 3 ]; then
+              echo "⚠️  API endpoint not responding after 3 attempts"
+              echo "This might be normal for a cold start - check CloudWatch logs"
+            else
+              echo "Retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+
+      - name: Update function environment
+        if: always()
+        run: |
+          echo "🔧 Updating Lambda environment variables..."
+          
+          # Update deployment timestamp
+          aws lambda update-function-configuration \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --environment Variables="{
+              DEPLOY_TIMESTAMP=\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+              DEPLOY_COMMIT=\"${{ steps.build-info.outputs.commit-sha }}\",
+              DEPLOY_BUILD_ID=\"${{ steps.build-info.outputs.build-id }}\"
+            }" \
+            --output json > env-update.json || echo "Environment update failed (non-critical)"
+          
+          cat env-update.json 2>/dev/null || echo "No environment update output"
+
+      - name: Post-deployment summary
+        if: always()
+        run: |
+          echo "## 🚀 Lambda Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Production (AWS Lambda)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Function**: ${{ env.LAMBDA_FUNCTION_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ${{ steps.build-info.outputs.image-uri }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ steps.build-info.outputs.commit-sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build ID**: ${{ steps.build-info.outputs.build-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL**: https://taskmaster-mcp.dev.cintra.cloud" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY 
