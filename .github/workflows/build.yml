@@ -9,7 +9,7 @@ on:
       - main
 
 env:
-  AWS_REGION: eu-west-2  # Must match Dave's Terraform infrastructure region
+  AWS_REGION: eu-west-2
   ECR_REPOSITORY: cintra-taskmaster
 
 permissions:
