@@ -9,7 +9,7 @@ on:
       - main
 
 env:
-  AWS_REGION: ${{ vars.AWS_DEFAULT_REGION || 'us-east-1' }}
+  AWS_REGION: eu-west-2  # Must match Dave's Terraform infrastructure region
   ECR_REPOSITORY: cintra-taskmaster
 
 permissions:

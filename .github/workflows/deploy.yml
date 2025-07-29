@@ -9,7 +9,7 @@ on:
       - main
 
 env:
-  AWS_REGION: ${{ vars.AWS_DEFAULT_REGION || 'us-east-1' }}
+  AWS_REGION: eu-west-2 
   ECR_REPOSITORY: cintra-taskmaster
   LAMBDA_FUNCTION_NAME: taskmaster-mcp
 
