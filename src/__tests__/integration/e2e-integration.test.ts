@@ -351,7 +351,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
         expect(response.body).toHaveProperty('content');
         
         const responseText = response.body.content[0]?.text;
-        expect(responseText).toContain('Successfully created Jira epic');
+        expect(responseText).toContain('Successfully created AI-generated Jira epic');
         
         const epicIdMatch = responseText?.match(/JAR-\d+/);
         const epicId = epicIdMatch?.[0];
@@ -361,7 +361,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
         
         registerTestTicket(epicId, 'epic');
         console.log(`✅ Epic created successfully: ${epicId}`);
-    });
+    }, 60000); // 60 second timeout for AI-powered epic creation
 
     // ======================
     // TOOL 2: GET_JIRA_TASK (Epic Verification)
@@ -418,7 +418,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
         expect(response.body).toHaveProperty('content');
         
         const responseText = response.body.content[0]?.text;
-        expect(responseText).toContain('Successfully created Jira task');
+        expect(responseText).toContain('Successfully created AI-generated Jira task');
         
         const taskIdMatch = responseText?.match(/JAR-\d+/);
         const taskId = taskIdMatch?.[0];
@@ -428,7 +428,7 @@ describe('E2E Integration Tests - Individual Tool Testing (SAFETY CRITICAL)', ()
         
         registerTestTicket(taskId, 'task');
         console.log(`✅ Task created successfully: ${taskId}`);
-    });
+    }, 60000); // 60 second timeout for AI-powered task creation
 
     // ======================
     // TOOL 2: GET_JIRA_TASK (Task Verification)
