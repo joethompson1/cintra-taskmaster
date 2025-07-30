@@ -116,6 +116,57 @@ export function registerGetTaskTool(server: McpServer, getSessionConfig?: () => 
                 delete task._contextImages;
             }
 
+            // Format the task data with enhanced dependency information
+            let formattedTaskData = '';
+            if (typeof task === 'object' && task) {
+                // Add header with key information
+                formattedTaskData += `# ${task.title || 'Untitled Task'} (${task.jiraKey || task.id})\n\n`;
+                
+                // Add status and priority information
+                formattedTaskData += `**Status:** ${task.status || 'Unknown'}\n`;
+                formattedTaskData += `**Priority:** ${task.priority || 'Unknown'}\n`;
+                formattedTaskData += `**Type:** ${task.issueType || 'Unknown'}\n`;
+                
+                // Add dates if available
+                if (task.created) {
+                    const createdDate = new Date(task.created).toLocaleString();
+                    formattedTaskData += `**Created:** ${createdDate}\n`;
+                }
+                if (task.updated) {
+                    const updatedDate = new Date(task.updated).toLocaleString();
+                    formattedTaskData += `**Last Updated:** ${updatedDate}\n`;
+                }
+                
+                // Add assignee if available
+                if (task.assignee) {
+                    formattedTaskData += `**Assignee:** ${task.assignee}\n`;
+                }
+                
+                // Add dependency information if available
+                if (task.dependencies && task.dependencies.length > 0) {
+                    formattedTaskData += `\n**Dependencies (this task depends on):**\n`;
+                    task.dependencies.forEach((dep: string) => {
+                        formattedTaskData += `- ${dep}\n`;
+                    });
+                }
+                
+                // Add issue links information if available
+                if (task.issueLinks && task.issueLinks.length > 0) {
+                    formattedTaskData += `\n**Issue Links:**\n`;
+                    task.issueLinks.forEach((link: any) => {
+                        formattedTaskData += `- ${link.linkDescription}\n`;
+                        if (link.relatedSummary) {
+                            formattedTaskData += `  '${link.relatedSummary}'\n`;
+                        }
+                    });
+                }
+                
+                formattedTaskData += `\n---\n\n`;
+                formattedTaskData += `**Full Task Data:**\n\`\`\`json\n${JSON.stringify(task, null, 2)}\n\`\`\``;
+            } else {
+                formattedTaskData = String(task);
+            }
+
             // Build the content array with proper typing
             const content: Array<{
                 type: 'text';
@@ -129,9 +180,7 @@ export function registerGetTaskTool(server: McpServer, getSessionConfig?: () => 
             // Add task data
             content.push({
                 type: 'text' as const,
-                text: typeof task === 'object'
-                    ? JSON.stringify(task, null, 2)
-                    : String(task)
+                text: formattedTaskData
             });
 
             // Add main ticket images to the content array

@@ -8,7 +8,6 @@
  * 3. Handle panel content formatting (details, acceptance criteria, test strategy)
  */
 
-import { JiraClient } from './jira-client.js';
 import { 
     JiraTicketData, 
     TaskMasterTask, 
@@ -39,30 +38,39 @@ export class JiraTicket {
     public attachments: any[];
     public comments: any[];
     public relatedContext: any;
+    public created: string;
+    public updated: string;
+    public issueLinks: any[];
 
     /**
      * Create a new JiraTicket
      * @param data - Initial ticket data
      */
-    constructor(data: Partial<JiraTicketData> = {}) {
+    constructor(data: JiraTicketData & { 
+        created?: string; 
+        updated?: string; 
+        issueLinks?: any[]; 
+        relatedContext?: any 
+    } = {} as any) {
         this.title = data.title || '';
         this.description = data.description || '';
         this.details = data.details || '';
         this.acceptanceCriteria = data.acceptanceCriteria || '';
         this.testStrategy = data.testStrategy || '';
-        this.priority = data.priority
-            ? data.priority.charAt(0).toUpperCase() + data.priority.slice(1)
-            : 'Medium';
+        this.priority = data.priority || 'Medium';
         this.issueType = data.issueType || 'Task';
         this.parentKey = data.parentKey || '';
         this.labels = data.labels || [];
         this.assignee = data.assignee || '';
         this.jiraKey = data.jiraKey || '';
         this.dependencies = data.dependencies || [];
-        this.status = data.status || '';
+        this.status = data.status || 'To Do';
         this.attachments = data.attachments || [];
         this.comments = data.comments || [];
         this.relatedContext = data.relatedContext || null;
+        this.created = data.created || '';
+        this.updated = data.updated || '';
+        this.issueLinks = data.issueLinks || [];
     }
 
     /**
@@ -142,6 +150,18 @@ export class JiraTicket {
 
         if (data.relatedContext !== undefined) {
             this.relatedContext = data.relatedContext;
+        }
+
+        if (data.created !== undefined) {
+            this.created = data.created;
+        }
+
+        if (data.updated !== undefined) {
+            this.updated = data.updated;
+        }
+
+        if (data.issueLinks !== undefined) {
+            this.issueLinks = Array.isArray(data.issueLinks) ? data.issueLinks : [];
         }
 
         return this;
@@ -751,8 +771,8 @@ export class JiraTicket {
             subtasks: [], // Will be populated externally if needed
             parentKey: this.parentKey,
             issueType: this.issueType,
-            created: '', // Will be populated from Jira data
-            updated: '', // Will be populated from Jira data
+            created: this.created,
+            updated: this.updated,
             acceptanceCriteria: this.acceptanceCriteria,
             testStrategy: this.testStrategy,
             details: this.details,
@@ -1208,7 +1228,10 @@ export class JiraTicket {
             dependencies: task.dependencies,
             status: task.status,
             attachments: task.attachments,
-            comments: task.comments
+            comments: task.comments,
+            created: task.created,
+            updated: task.updated,
+            relatedContext: task.relatedContext
         });
     }
 
@@ -1222,6 +1245,12 @@ export class JiraTicket {
         
         // Extract structured content from description
         const panels = this.extractPanelsFromDescription(fields.description);
+        
+        // Extract dependency information from issue links
+        const { dependencies, linkDetails } = this.extractDependenciesFromLinks(
+            fields.issuelinks || [], 
+            jiraIssue.key
+        );
         
         const ticket = new JiraTicket({
             title: fields.summary,
@@ -1237,10 +1266,88 @@ export class JiraTicket {
             jiraKey: jiraIssue.key,
             status: this.convertJiraStatusToTaskMaster(fields.status),
             attachments: fields.attachment || [],
-            comments: this.extractCommentsFromJira(fields.comment?.comments || [])
+            comments: this.extractCommentsFromJira(fields.comment?.comments || []),
+            created: fields.created,
+            updated: fields.updated,
+            dependencies,
+            issueLinks: linkDetails
         });
 
         return ticket;
+    }
+
+    /**
+     * Extract dependency information from Jira issue links
+     * @param issueLinks - Array of Jira issue links
+     * @param currentKey - The current issue key to determine link direction
+     * @returns Object with dependency arrays and detailed link information
+     */
+    static extractDependenciesFromLinks(issueLinks: any[], currentKey: string): {
+        dependencies: string[];
+        blocks: string[];
+        linkDetails: Array<{
+            type: string;
+            direction: 'inward' | 'outward';
+            relatedIssue: string;
+            relatedSummary?: string;
+            linkDescription: string;
+        }>;
+    } {
+        const dependencies: string[] = [];
+        const blocks: string[] = [];
+        const linkDetails: Array<{
+            type: string;
+            direction: 'inward' | 'outward';
+            relatedIssue: string;
+            relatedSummary?: string;
+            linkDescription: string;
+        }> = [];
+
+        for (const link of issueLinks) {
+            const linkType = link.type?.name || 'Unknown';
+            const inwardDesc = link.type?.inward || 'inward';
+            const outwardDesc = link.type?.outward || 'outward';
+
+            if (link.inwardIssue) {
+                // This issue is the outward issue in the relationship
+                const relatedKey = link.inwardIssue.key;
+                const relatedSummary = link.inwardIssue.fields?.summary;
+                
+                linkDetails.push({
+                    type: linkType,
+                    direction: 'outward',
+                    relatedIssue: relatedKey,
+                    relatedSummary,
+                    linkDescription: `${currentKey} ${outwardDesc} ${relatedKey}`
+                });
+
+                // For "Blocks" type, if this is outward, then the inward issue blocks this issue
+                if (linkType === 'Blocks') {
+                    dependencies.push(relatedKey);
+                }
+            }
+
+            if (link.outwardIssue) {
+                // This issue is the inward issue in the relationship
+                const relatedKey = link.outwardIssue.key;
+                const relatedSummary = link.outwardIssue.fields?.summary;
+                
+                linkDetails.push({
+                    type: linkType,
+                    direction: 'inward',
+                    relatedIssue: relatedKey,
+                    relatedSummary,
+                    linkDescription: `${currentKey} ${inwardDesc} ${relatedKey}`
+                });
+
+                // For "Blocks" type, if this is inward, then this issue blocks the outward issue
+                if (linkType === 'Blocks') {
+                    blocks.push(relatedKey);
+                }
+            }
+        }
+
+        return { dependencies, blocks, linkDetails };
     }
 
     /**
