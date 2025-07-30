@@ -279,7 +279,7 @@ export class JiraClient {
             );
 
             // Build fields list based on options
-            let fields = 'summary,description,status,priority,issuetype,parent,issuelinks,subtasks,attachment,labels';
+            let fields = 'summary,description,status,priority,issuetype,parent,issuelinks,subtasks,attachment,labels,created,updated,assignee,reporter';
             if (includeComments) {
                 fields += ',comment';
             }

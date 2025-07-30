@@ -3387,3 +3387,105 @@ export async function addContextToTask(
 		// Don't throw - context failure shouldn't break main functionality
 	}
 }
+
+/**
+ * Add issue dependencies (dependsOn and/or blocks relationships) to a Jira issue
+ * @param {string} issueKey - The Jira issue key to add dependencies to
+ * @param {Object} dependencies - Object containing dependsOn and/or blocks ticket keys
+ * @param {string} [dependencies.dependsOn] - Ticket key that this issue depends on
+ * @param {string} [dependencies.blocks] - Ticket key that this issue blocks
+ * @param {Object} options - Options object containing jiraConfig and log
+ * @returns {Promise<Object>} Result object with success status and changes made
+ */
+export async function addIssueDependencies(
+    issueKey: string,
+    dependencies: { dependsOn?: string; blocks?: string },
+    options: FetchOptions = {}
+): Promise<{ success: boolean; changes: string[]; errors: string[] }> {
+    const { jiraConfig, log } = options;
+    const changes: string[] = [];
+    const errors: string[] = [];
+
+    try {
+        // Check if Jira is enabled using the JiraClient
+        const jiraClient = new JiraClient(jiraConfig);
+
+        if (!jiraClient.isReady()) {
+            errors.push('Jira integration is not properly configured');
+            return { success: false, changes, errors };
+        }
+
+        const client = jiraClient.getClient();
+
+        // Add dependsOn relationship if specified
+        if (dependencies.dependsOn) {
+            try {
+                log?.info(`Adding dependency: ${issueKey} depends on ${dependencies.dependsOn}`);
+                
+                const linkPayload = {
+                    type: {
+                        name: 'Blocks'
+                    },
+                    inwardIssue: {
+                        key: dependencies.dependsOn
+                    },
+                    outwardIssue: {
+                        key: issueKey
+                    }
+                };
+                
+                await client.post('/rest/api/3/issueLink', linkPayload);
+                changes.push(`${issueKey} now depends on ${dependencies.dependsOn}`);
+                log?.info(`Successfully added dependency: ${issueKey} depends on ${dependencies.dependsOn}`);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                errors.push(`Failed to add dependency ${dependencies.dependsOn}: ${errorMessage}`);
+                log?.error(`Error adding dependency: ${errorMessage}`);
+            }
+        }
+
+        // Add blocks relationship if specified
+        if (dependencies.blocks) {
+            try {
+                log?.info(`Adding blocking: ${issueKey} blocks ${dependencies.blocks}`);
+                
+                const linkPayload = {
+                    type: {
+                        name: 'Blocks'
+                    },
+                    inwardIssue: {
+                        key: issueKey
+                    },
+                    outwardIssue: {
+                        key: dependencies.blocks
+                    }
+                };
+                
+                await client.post('/rest/api/3/issueLink', linkPayload);
+                changes.push(`${issueKey} now blocks ${dependencies.blocks}`);
+                log?.info(`Successfully added blocking: ${issueKey} blocks ${dependencies.blocks}`);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                errors.push(`Failed to add blocking ${dependencies.blocks}: ${errorMessage}`);
+                log?.error(`Error adding blocking: ${errorMessage}`);
+            }
+        }
+
+        return {
+            success: errors.length === 0,
+            changes,
+            errors
+        };
+
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`Failed to process dependencies: ${errorMessage}`);
+        log?.error(`Error in addIssueDependencies: ${errorMessage}`);
+        
+        return {
+            success: false,
+            changes,
+            errors
+        };
+    }
+}

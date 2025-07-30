@@ -7,7 +7,7 @@ import { z } from 'zod';
 // @ts-ignore
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
 import { logger } from '../../utils/logger';
-import { createJiraIssue } from '../../utils/jira/jira-utils';
+import { createJiraIssue, addIssueDependencies } from '../../utils/jira/jira-utils';
 import { JiraTicket } from '../../utils/jira/jira-ticket';
 import { createErrorResponse } from '../../utils/utils';
 import { useSessionConfigs } from '../../utils/config';
@@ -45,11 +45,11 @@ The AI will automatically generate appropriate fields like implementationDetails
             parentKey: z
                 .string()
                 .optional()
-                .describe("The Jira key of the Epic/parent to link this issue to (e.g., 'PROJ-5'). Required for Subtasks."),
+                .describe('The Jira key of the Epic/parent to link this issue to (e.g., \'PROJ-5\'). Required for Subtasks.'),
             priority: z
                 .string()
                 .optional()
-                .describe("Jira priority name (e.g., 'Medium', 'High')"),
+                .describe('Jira priority name (e.g., \'Medium\', \'High\')'),
             assignee: z
                 .string()
                 .optional()
@@ -58,6 +58,14 @@ The AI will automatically generate appropriate fields like implementationDetails
                 .array(z.string())
                 .optional()
                 .describe('List of labels to add to the ticket, dont add labels unless specially asked by the user'),
+            dependsOn: z
+                .string()
+                .optional()
+                .describe('Jira issue key that this issue depends on (e.g., "PROJ-123"). Will create a "depends on" link after issue creation.'),
+            blocks: z
+                .string()
+                .optional()
+                .describe('Jira issue key that this issue will block (e.g., "PROJ-456"). Will create a "blocks" link after issue creation.'),
             projectKey: z
                 .string()
                 .describe('The Jira project key to create the issue in (e.g., "PROJ"). This parameter is required.'),
@@ -70,6 +78,8 @@ The AI will automatically generate appropriate fields like implementationDetails
         priority?: string;
         assignee?: string;
         labels?: string[];
+        dependsOn?: string;
+        blocks?: string;
         projectKey: string;
     }) => {
         try {
@@ -117,7 +127,7 @@ The AI will automatically generate appropriate fields like implementationDetails
             // Use the JiraTicket class to manage the ticket data and ADF conversion
             const jiraTicket = new JiraTicket({
                 title: args.title,
-                description: generatedFields.description || args.description,
+                description: generatedFields.description || args.description || '',
                 details: generatedFields.implementationDetails,
                 acceptanceCriteria: generatedFields.acceptanceCriteria,
                 testStrategy: generatedFields.testStrategy,
@@ -127,7 +137,8 @@ The AI will automatically generate appropriate fields like implementationDetails
                     : 'Medium',
                 issueType: issueType,
                 assignee: args.assignee,
-                labels: args.labels || []
+                labels: args.labels || [],
+                dependencies: args.dependsOn ? [args.dependsOn] : []
             });
 
             // Call the createJiraIssue function
@@ -157,11 +168,33 @@ The AI will automatically generate appropriate fields like implementationDetails
             
             logger.info(successMessage);
 
+            // Create dependency links if dependsOn or blocks are provided
+            let dependencyMessage = '';
+            if (args.dependsOn || args.blocks) {
+                const dependencyResult = await addIssueDependencies(
+                    issueData.key,
+                    {
+                        dependsOn: args.dependsOn,
+                        blocks: args.blocks
+                    },
+                    {
+                        jiraConfig,
+                        log: logger
+                    }
+                );
+
+                if (dependencyResult.success && dependencyResult.changes.length > 0) {
+                    dependencyMessage = `\n✅ Created dependency links:\n${dependencyResult.changes.map(change => `  - ${change}`).join('\n')}`;
+                } else if (dependencyResult.errors.length > 0) {
+                    dependencyMessage = `\n⚠️ Issue created but dependency errors occurred:\n${dependencyResult.errors.map(error => `  - ${error}`).join('\n')}`;
+                }
+            }
+
             return {
                 content: [
                     {
                         type: 'text' as const,
-                        text: `${successMessage}\n\nIssue Details:\n- Key: ${issueData.key}\n- ID: ${issueData.id}\n- Type: ${jiraTicket.issueType}\n- Priority: ${jiraTicket.priority}${args.parentKey ? `\n- Parent: ${args.parentKey}` : ''}${args.assignee ? `\n- Assignee: ${args.assignee}` : ''}\n\n🤖 Ticket content generated using AI following ${issueType} framework requirements\n📋 Generated fields: ${Object.keys(generatedFields).join(', ')}`
+                        text: `${successMessage}\n\nIssue Details:\n- Key: ${issueData.key}\n- ID: ${issueData.id}\n- Type: ${jiraTicket.issueType}\n- Priority: ${jiraTicket.priority}${args.parentKey ? `\n- Parent: ${args.parentKey}` : ''}${args.assignee ? `\n- Assignee: ${args.assignee}` : ''}${args.dependsOn ? `\n- Depends on: ${args.dependsOn}` : ''}${args.blocks ? `\n- Blocks: ${args.blocks}` : ''}${dependencyMessage}\n\n🤖 Ticket content generated using AI following ${issueType} framework requirements\n📋 Generated fields: ${Object.keys(generatedFields).join(', ')}`
                     }
                 ]
             };

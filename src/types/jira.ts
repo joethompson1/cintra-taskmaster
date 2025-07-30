@@ -286,6 +286,9 @@ export interface JiraTicketData {
     attachments?: unknown[];
     comments?: unknown[];
     relatedContext?: unknown;
+    created?: string;
+    updated?: string;
+    issueLinks?: unknown[];
 }
 
 export interface TaskMasterTask {
