@@ -56,13 +56,17 @@ export class AtlassianOAuthMiddleware {
     private config: OAuthConfig;
 
     constructor() {
+        // Construct callback URL from BASE_URL if OAUTH_CALLBACK_URL is not provided
+        const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+        const defaultCallbackUrl = `${baseUrl}/auth/callback`;
+        
         this.config = {
             authorizationUrl: 'https://auth.atlassian.com/authorize',
             tokenUrl: 'https://auth.atlassian.com/oauth/token',
             revocationUrl: 'https://auth.atlassian.com/oauth/token/revoke',
             clientId: process.env.ATLASSIAN_CLIENT_ID || '',
             clientSecret: process.env.ATLASSIAN_CLIENT_SECRET || '',
-            callbackUrl: process.env.OAUTH_CALLBACK_URL || 'http://localhost:3000/auth/callback',
+            callbackUrl: process.env.OAUTH_CALLBACK_URL || defaultCallbackUrl,
             scopes: [
                 'read:jira-work',
                 'write:jira-work',
