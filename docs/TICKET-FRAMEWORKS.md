@@ -16,7 +16,7 @@ The ticket framework system provides:
 **Purpose**: Implementation work with clear technical requirements
 
 **Required Fields:**
-- `description` - Overview and context
+- `description` - **Must follow user story format**: "As a [user/role], I want [goal], So that [benefit]" with brief context if needed. Wrap the user story in a fenced code block (```user-story preferred). You may include BDD-style lines (Given/When/Then/And) on separate lines inside the code block.
 - `implementationDetails` - Technical approach and steps  
 - `acceptanceCriteria` - Completion criteria and requirements
 - `testStrategy` - Testing approach
@@ -86,7 +86,7 @@ High-level overview of investigation
 **Purpose**: User-focused features with business value
 
 **Required Fields:**
-- `description` - User story and business value
+- `description` - **Must follow user story format**: "As a [user/role], I want [goal], So that [benefit]" with brief context if needed. Wrap the user story in a fenced code block (```user-story preferred).
 - `acceptanceCriteria` - Completion criteria
 
 **Recommended Fields:** `implementationDetails`, `testStrategy`, `parentKey`
@@ -101,7 +101,7 @@ High-level overview of investigation
 **Purpose**: Large initiatives broken down into smaller work items
 
 **Required Fields:**
-- `description` - High-level overview and goals
+- `description` - **Must follow user story format**: "As a [stakeholder], I want [high-level goal], So that [business value]" with scope overview if needed. Wrap the user story in a fenced code block (```user-story preferred).
 - `acceptanceCriteria` - Epic completion criteria
 
 **Recommended Fields:** `implementationDetails`
@@ -116,7 +116,7 @@ High-level overview of investigation
 **Purpose**: Specific work items that contribute to parent tasks
 
 **Required Fields:**
-- `description` - Specific task details
+- `description` - **Should follow user story format when applicable**: "As a [user/role], I want [functionality], So that [benefit]" OR technical task description. When using a user story, wrap it in a fenced code block (```user-story preferred).
 - `parentKey` - Link to parent task/story
 
 **Recommended Fields:** `implementationDetails`, `acceptanceCriteria`
@@ -142,11 +142,11 @@ add_jira_issue({
     // Missing: implementationDetails, acceptanceCriteria, testStrategy
 })
 
-// This will pass validation - all required fields present
+// This will pass validation - all required fields present with user story format
 add_jira_issue({
     title: "Implement user authentication", 
     issueType: "Task",
-    description: "Add login functionality with OAuth integration",
+    description: "As a user, I want to log in with OAuth integration, So that I can access my account securely without managing separate passwords.",
     implementationDetails: "- Integrate OAuth provider\n- Create login UI\n- Add session management",
     acceptanceCriteria: "- [ ] Users can log in with OAuth\n- [ ] Sessions persist correctly",
     testStrategy: "Unit tests for auth service, integration tests for login flow",
@@ -218,10 +218,18 @@ The framework system consists of:
 - Consider regression testing for related functionality
 
 ### For Stories
-- Write from user's perspective ("As a... I want... So that...")
+- **CRITICAL**: Always write from user's perspective using the format: "As a [user/role], I want [goal], So that [benefit]"
 - Focus on business value and user benefits
 - Include testable acceptance criteria
 - Consider edge cases and error scenarios
+
+### For All User Story Format Tickets (Task, Story, Epic)
+- **WHO**: Clearly identify the user, role, or stakeholder
+- **WHAT**: Be specific about the goal or functionality needed
+- **WHY**: Explain the business value or benefit clearly
+- Keep the format concise but complete
+- Avoid technical jargon in the user story portion
+ - Wrap the user story in a fenced code block. You can include BDD steps (Given/When/Then/And) each on a new line inside the block.
 
 ## Error Messages and Troubleshooting
 

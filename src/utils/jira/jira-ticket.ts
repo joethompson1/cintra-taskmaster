@@ -224,6 +224,98 @@ export class JiraTicket {
     }
 
     /**
+     * Format user stories into structured sections with code blocks
+     * @param text - Text potentially containing user story markers
+     * @returns Array of ADF nodes representing formatted user stories
+     */
+    private _formatUserStoriesAsNodes(text: string): { processedText: string; userStoryNodes: ADFNode[] } {
+        if (!text) return { processedText: text, userStoryNodes: [] };
+
+        const userStoryNodes: ADFNode[] = [];
+        let storyCount = 0;
+
+        // Helper to extract a short descriptive title from an "I want ..." clause
+        const extractTitleFromIWant = (content: string): string | null => {
+            const iWant = content.match(/\bI want\s+([^\n,.]+(?:[\s\S]*?))(?:\.|,|\n|$)/i);
+            if (!iWant) return null;
+            const raw = iWant[1].trim();
+            // Normalize spacing and casing
+            const cleaned = raw.replace(/\s+/g, ' ').trim();
+            return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        };
+
+        // Process only fenced code blocks (legacy [USER_STORY_*] markers removed)
+        let remainingText = text;
+
+        // Process fenced code blocks that look like user stories
+        // We consider a code block a user story if:
+        //  - The fence info string includes "user-story" (optionally followed by a title), OR
+        //  - The content contains As a / I want / so that (any order), OR
+        //  - The content contains BDD lines (Given/When/Then/And)
+        const fenceRegex = /```([^\n]*)\n([\s\S]*?)\n```/g;
+        remainingText = remainingText.replace(fenceRegex, (fullMatch: string, fenceInfo: string, inner: string) => {
+            const info = String(fenceInfo || '').trim();
+            const content = String(inner || '').trim();
+            const hasUserStoryByLang = /\buser-story\b/i.test(info);
+            const hasAsAIwantSoThat = /As a/i.test(content) && /I want/i.test(content) && /so that/i.test(content);
+            const hasBDD = /^(?:Given|When|Then|And)\b/im.test(content);
+            if (!hasUserStoryByLang && !hasAsAIwantSoThat && !hasBDD) {
+                // Not a user story code block; keep it in the main text
+                return fullMatch;
+            }
+
+            storyCount++;
+
+            // Extract title from the fence info if provided after "user-story"
+            let titleFromFence: string | null = null;
+            if (hasUserStoryByLang) {
+                // Accept formats like: "user-story My Title" or "user-story: My Title"
+                const afterTag = info.replace(/^[\s`]*user-story\b[:\s-]*/i, '');
+                const cleaned = afterTag.trim();
+                if (cleaned && !/^\w*\s*$/.test(cleaned)) {
+                    titleFromFence = cleaned;
+                } else if (cleaned) {
+                    titleFromFence = cleaned;
+                }
+            }
+
+            // Fallback: synthesize a descriptive title from the I want ... clause
+            const titleFromIWant = extractTitleFromIWant(content);
+            const titleNode: ADFNode = {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'text',
+                        text: (titleFromFence || titleFromIWant)
+                            ? `User story: ${titleFromFence || titleFromIWant}`
+                            : storyCount > 1
+                                ? `User story ${storyCount}:`
+                                : 'User story:',
+                        marks: [{ type: 'strong' }]
+                    }
+                ]
+            };
+            userStoryNodes.push(titleNode);
+
+            // Normalize As a / I want / so that to be on separate lines if they are inline
+            let normalized = content
+                .replace(/\s*,\s*I want\s*/gi, '\nI want ')
+                .replace(/\s*,\s*so that\s*/gi, '\nso that ')
+                .trim();
+
+            userStoryNodes.push({
+                type: 'codeBlock',
+                content: [{ type: 'text', text: normalized }]
+            });
+
+            // Remove this block from main text
+            return '';
+        });
+
+        return { processedText: remainingText.trim(), userStoryNodes };
+    }
+
+    /**
      * Normalize markdown text by handling various formatting edge cases
      * @param text - Markdown text to normalize
      * @returns Normalized markdown text
@@ -244,7 +336,9 @@ export class JiraTicket {
             // Ensure headers have proper spacing
             .replace(/^(#{1,6})\s*(.+)$/gm, '$1 $2')
             // Ensure list items have proper spacing
-            .replace(/^(\s*[-*+])\s*(.+)$/gm, '$1 $2')
+            // IMPORTANT: Do not treat lines starting with bold ("**text**") as list items
+            // Only match a single bullet marker that is NOT immediately followed by the same marker (e.g., prevent matching "**" as a bullet)
+            .replace(/^(\s*)([-*+])(?!\2)\s*(.+)$/gm, '$1$2 $3')
             .replace(/^(\s*\d+\.)\s*(.+)$/gm, '$1 $2')
             // Clean up extra whitespace
             .replace(/[ \t]+$/gm, '') // Remove trailing whitespace
@@ -369,12 +463,12 @@ export class JiraTicket {
                 continue;
             }
 
-            // Handle bullet lists
-            const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
+            // Handle bullet lists (avoid treating lines that start with bold/italic as bullets)
+            const bulletMatch = line.match(/^(\s*)([-*+])(?!\2)\s+(.+)$/);
             if (bulletMatch) {
                 flushParagraph();
                 const indent = bulletMatch[1].length;
-                const listText = bulletMatch[2];
+                const listText = bulletMatch[3];
                 
                 // Create or find existing bullet list
                 let bulletList = nodes[nodes.length - 1];
@@ -681,8 +775,20 @@ export class JiraTicket {
 
         // Add main description
         if (this.description) {
-            const descriptionNodes = this._parseMarkdownToNodes(this.description);
-            content.push(...descriptionNodes);
+            // Process user stories and extract them as formatted nodes
+            const { processedText, userStoryNodes } = this._formatUserStoriesAsNodes(this.description);
+            
+            // Add user story nodes first
+            if (userStoryNodes.length > 0) {
+                content.push(...userStoryNodes);
+            }
+            
+            // Add remaining description content
+            if (processedText) {
+                const normalizedDescription = this._normalizeMarkdown(processedText);
+                const descriptionNodes = this._parseMarkdownToNodes(normalizedDescription);
+                content.push(...descriptionNodes);
+            }
         }
 
         // Add implementation details panel
