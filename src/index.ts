@@ -13,31 +13,20 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { setupMcpServer } from './server/mcpServer';
 import { logger } from './utils/logger';
-import './utils/datadog'; // Import Datadog initialization
 import { oauthMiddleware } from './middleware/oauth';
 import { createMCPOAuthRouter } from './middleware/mcp-oauth-endpoints';
 
 const app = express();
 
 // Configure CORS to allow MCP Inspector and other clients
-const isLambda = !!process.env.AWS_EXECUTION_ENV;
-const isDevelopment = process.env.NODE_ENV === 'development';
-
-const corsOrigins = isDevelopment && !isLambda ? [
-	// Development origins (only in local development)
-	'http://localhost:6274', // MCP Inspector default port
-	'http://localhost:5173', // Vite dev server
-	'http://localhost:3001', // Common dev port
-	'https://claude.ai',     // Claude web interface
-	...(process.env.ALLOWED_ORIGINS?.split(',') || [])
-] : [
-	// Production/Lambda origins
-	'https://claude.ai',     // Claude web interface
-	...(process.env.ALLOWED_ORIGINS?.split(',') || [])
-];
-
 app.use(cors({
-	origin: corsOrigins,
+	origin: [
+		'http://localhost:6274', // MCP Inspector default port
+		'http://localhost:5173', // Vite dev server
+		'http://localhost:3001', // Common dev port
+		'https://claude.ai',     // Claude web interface
+		...(process.env.ALLOWED_ORIGINS?.split(',') || [])
+	],
 	credentials: true,
 	methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 	allowedHeaders: [
@@ -51,11 +40,7 @@ app.use(cors({
 		'x-atlassian-email',
 		'x-jira-api-token',
 		'x-jira-project',
-		'x-bitbucket-api-token',
-		// OAuth headers
-		'x-oauth-token',
-		'x-cloud-id',
-		'oauth-authenticated'
+		'x-bitbucket-api-token'
 	]
 }));
 
@@ -330,30 +315,11 @@ app.get('/', (req: Request, res: Response) => {
 	}
 });
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
-
-// In Lambda environment, the server should bind to all interfaces
-const host = process.env.AWS_EXECUTION_ENV ? '0.0.0.0' : 'localhost';
-
-app.listen(PORT, host, () => {
-	logger.info(`MCP HTTP server listening on ${host}:${PORT}`, {
-		host,
-		port: PORT,
-		endpoints: {
-			health: `http://${host}:${PORT}/health`,
-			mcp: `http://${host}:${PORT}/mcp`
-		}
-	});
-	
-	// Log Lambda-specific information if running in Lambda
-	if (process.env.AWS_EXECUTION_ENV) {
-		logger.info('Running in AWS Lambda environment', {
-			functionName: process.env.AWS_LAMBDA_FUNCTION_NAME,
-			functionVersion: process.env.AWS_LAMBDA_FUNCTION_VERSION,
-			executionEnv: process.env.AWS_EXECUTION_ENV,
-			awsRegion: process.env.AWS_REGION
-		});
-	}
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+	console.log(`MCP HTTP server listening on port ${PORT}`);
+	console.log(`Health check: http://localhost:${PORT}/health`);
+	console.log(`MCP endpoint: http://localhost:${PORT}/mcp`);
 });
 
 // Graceful shutdown
